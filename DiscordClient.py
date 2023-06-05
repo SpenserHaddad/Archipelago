@@ -3,7 +3,7 @@ from collections.abc import Awaitable
 from functools import partial
 import logging
 import os
-from typing import Any, Callable, NoReturn
+from typing import Any, Callable, Iterable, NoReturn
 
 from CommonClient import ClientCommandProcessor, CommonContext
 from MultiServer import CommandProcessor
@@ -57,7 +57,6 @@ class DiscordCommandCog(Cog):
         ap_context_callback = partial(self._handle_ap_server_command, ctx.channel)
         ap_context = DiscordContext(server_address, password, ap_context_callback)
         ap_context.auth = slot
-        ap_context.password = password
         await ap_context.connect()
         await ap_context.server_auth()
         logger.debug(f"Connected successfully, assigning to channel {ctx.channel.id}")
@@ -71,6 +70,11 @@ class DiscordCommandCog(Cog):
             await ctx.send(f"Connect `command` missing argument `{missing_arg}`.")
 
     @command()
+    async def sync(self, ctx: commands.Context):
+        ap_context = self._ap_contexts[ctx.channel.id]
+        await ap_context.send_msgs([{"cmd": "Sync"}])
+
+    @command()
     async def received(self, ctx: commands.Context):
         """List all received items."""
         ap_context = self._ap_contexts[ctx.channel.id]
@@ -80,33 +84,43 @@ class DiscordCommandCog(Cog):
             player_name = ap_context.player_names[item.player]
             location_name = ap_context.location_names[item.location]
             message_lines.append(f"{idx}. {item_name} from {player_name} at {location_name}")
-        await ctx.channel.send("\n".join(message_lines))
+        await self._send_to_channel(ctx.channel, message_lines)
 
     @command()
-    async def items(self, ctx: commands.Context):
+    async def items(self, ctx: commands.Context, player: str | None = None):
         """List all item names for the currently running game."""
         ap_context = self._ap_contexts[ctx.channel.id]
         if not ap_context.game:
             await ctx.channel.send("No game set, cannot determine existing items.")
             return
 
-        message_lines = [f"Item Names for {ap_context.game}:"]
-        for idx, item in enumerate(AutoWorldRegister.world_types[ap_context.game].item_name_to_id, start=1):
+        if player is None:
+            player = ap_context.username
+        player_game = ap_context._player_games[player]
+        item_name_to_id = AutoWorldRegister.world_types[player_game].item_name_to_id
+
+        message_lines = [f"Item Names for {player_game}:"]
+        for idx, item in enumerate(item_name_to_id, start=1):
             message_lines.append(f"{idx}. {item}")
-        await ctx.channel.send("\n".join(message_lines))
+        await self._send_to_channel(ctx.channel, message_lines)
 
     @command()
-    async def locations(self, ctx: commands.Context):
+    async def locations(self, ctx: commands.Context, player: str | None = None):
         """List all location names for the currently running game."""
         ap_context = self._ap_contexts[ctx.channel.id]
         if not ap_context.game:
             await ctx.channel.send("No game set, cannot determine existing locations.")
             return
 
+        if player is None:
+            player = ap_context.username
+        player_game = ap_context._player_games[player]
+        location_name_to_id = AutoWorldRegister.world_types[player_game].location_name_to_id
+
         message_lines = [f"Location Names for {ap_context.game}:"]
-        for idx, location in enumerate(AutoWorldRegister.world_types[ap_context.game].location_name_to_id, start=1):
+        for idx, location in enumerate(location_name_to_id, start=1):
             message_lines.append(f"{idx}. {location}")
-        await self._send_to_channel(ctx.channel, "\n".join(message_lines))
+        await self._send_to_channel(ctx.channel, message_lines)
 
     @command()
     async def missing(self, ctx: commands.Context, filter_text=""):
@@ -147,28 +161,40 @@ class DiscordCommandCog(Cog):
             player_name = ap_context.player_names[item.player]
             location_name = ap_context.location_names[item.location]
             message_lines.append(f"{idx}. {item_name} from {player_name} at {location_name}")
-        await ctx.channel.send("\n".join(message_lines))
+        await self._send_to_channel(ctx.channel, message_lines)
 
-    async def _send_to_channel(self, channel: _MESSAGEABLE_CHANNEL, contents: str):
+    async def _send_to_channel(self, channel: _MESSAGEABLE_CHANNEL, message_lines: list[str]):
         # Discord only allows content of 2000 chars or less, which we can break.
         # Send in chunks if necessary.
         chunk_size = 1500
-        chunks = []
-        for chunk_start in range(0, len(contents), chunk_size):
-            chunk = contents[chunk_start : chunk_start + chunk_size]
-            chunks.append(chunk)
-        for ch in chunks:
-            await channel.send(ch)
+        chunks: list[str] = []
+        total_length = 0
+        for line in message_lines:
+            total_length += len(line)
+            if total_length > chunk_size:
+                # We'd go over the size limit, send what we have then star tover
+                logger.debug(f"Sending: first line = '{chunks[0]}', last line = '{chunks[-1]}'")
+                await channel.send("\n".join(chunks))
+                chunks = [line]
+                total_length = len(line)
+            else:
+                chunks.append(line)
+
+        if chunks:
+            await channel.send("\n".join(chunks))
 
     async def _handle_ap_server_command(
         self, channel: _MESSAGEABLE_CHANNEL, ctx: "DiscordContext", command: str, args: dict
     ):
-        logger.debug(f"Handle command on {channel=}, {command=}, {args=}")
+        logger.debug(f"Handling command on {channel=}, {command=}, {args=}")
+        message_lines: list[str] = []
         if command == "RoomInfo":
-            message_lines = [
-                "Connected to server!",
-                "Room Information:",
-            ]
+            message_lines.extend(
+                [
+                    "Connected to server!",
+                    "Room Information:",
+                ]
+            )
             message_lines.append(f"- Server protocol version: {ctx.server_version.as_simple_string()}")
             if "generator_version" in args:
                 message_lines.append(f"- Generator version: {ctx.generator_version.as_simple_string()}")
@@ -177,7 +203,6 @@ class DiscordCommandCog(Cog):
             message_lines.append(f"- Password required: {password_str}")
             message_lines.append(f"- !hint cost: {args['hint_cost']}")
             message_lines.append(f"- Hints per location checked: {args['location_check_points']}")
-            await channel.send("\n".join(message_lines))
         elif command == "ConnectionRefused":
             errors = args["errors"]
             message_lines = ["Connection refused for the following reason(s):"]
@@ -204,26 +229,20 @@ class DiscordCommandCog(Cog):
                 else:
                     error_message_lines.append(f"An unexpected error: {err}.")
             message_lines.extend(f"- {eml}" for eml in error_message_lines)
-            await channel.send("\n".join(message_lines))
         elif command == "Connected":
             if ctx.slot:
                 ctx.game = ctx.slot_info[ctx.slot].game
-            await channel.send(f"Connected to game on Team #{args['team']}, Slot #{args['slot']}")
         elif command == "ReceivedItems":
             pass
         elif command == "LocationInfo":
             pass
         elif command == "RoomUpdate":
-            message_lines = []
             new_permissions: dict[str, int] | None = args.get("permissions")
             if new_permissions:
                 message_lines.append("Permissions updated:")
                 for name, permission_flag in new_permissions.items():
                     flag = NetUtils.Permission(permission_flag)
                     message_lines.append(f"- {name.capitalize()} permission: {flag.name}")
-            if message_lines:
-                await channel.send("\n".join(message_lines))
-
         elif command == "Print":
             await channel.send(args["text"])
         elif command == "PrintJSON":
@@ -241,17 +260,26 @@ class DiscordCommandCog(Cog):
         elif command == "SetReply":
             pass
 
+        if message_lines:
+            await self._send_to_channel(channel, message_lines)
+
 
 class DiscordCommandProcessor(ClientCommandProcessor):
-    def __init__(self, ctx: CommonContext):
+    def __init__(self, ctx: CommonContext, send_message: Callable[[Iterable[str]], Awaitable[None]]):
         super().__init__(ctx)
+        self._send_message = send_message
+        self._send_buffer: list[str] = []
 
     def output(self, text: str):
+        self._send_buffer.append(text)
         return super().output(text)
+
+    def clear_buffer(self):
+        self._send_buffer.clear()
 
 
 class DiscordContext(CommonContext):
-    command_processor: type[CommandProcessor] = DiscordCommandProcessor
+    command_processor = DiscordCommandProcessor
     game: str | None = None  # Connect to any game
     tags: set[str] = {"TextOnly"}
     items_handling = 0b111  # receive all items
@@ -270,14 +298,7 @@ class DiscordContext(CommonContext):
         self._handle_commands_task: asyncio.Task[NoReturn] | None = None
 
     def on_package(self, cmd: str, args: dict):
-        # logger.info(f"Package: {cmd=}, {args=}")
         self._server_command_queue.put_nowait((cmd, args))
-
-        return super().on_package(cmd, args)
-
-    def on_print_json(self, args: dict):
-        logger.info(f"print json: {args=}")
-        return super().on_print_json(args)
 
     async def connect(self, address: str | None = None) -> None:
         self._received_room_info.clear()
@@ -293,6 +314,16 @@ class DiscordContext(CommonContext):
             cmd, args = await self._server_command_queue.get()
             if cmd == "RoomInfo":
                 self._received_room_info.set()
+                self._games = args["games"]
+                logger.debug(f"Games: {self._games}")
+            elif cmd == "Connected":
+                self._player_games = {}
+                player: NetUtils.NetworkPlayer
+                for player in args["players"]:
+                    player_slot = player.slot
+                    self._player_games[player.name] = self.slot_info[player_slot].game
+                logger.debug(f"Players to games: {self._player_games}")
+                # await self.send_msgs([{"cmd": "GetDataPackage"}])
             try:
                 await self._on_command_received(self, cmd, args)
             except Exception:
@@ -307,8 +338,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    Utils.init_logging("DiscordClient")
-    ap_logger = logging.getLogger("ap")
+    # Utils.init_logging("DiscordClient", exception_logger="DiscordClient", loglevel=logging.DEBUG)
+    ap_logger = logging.getLogger("DiscordClient")
     ap_logger.setLevel(logging.DEBUG)
     # log_file_handler = logging.FileHandler("ap_discord_client.log")
     # logger.addHandler(log_file_handler)
