@@ -96,7 +96,7 @@ class UndertaleCommandProcessor(ClientCommandProcessor):
                     )
                     return
 
-            dstDirectory = Path(os.getcwd()) / "Undertale"
+            dstDirectory = Path(__file__).absolute() / "Undertale"
             if dstDirectory.is_dir():
                 shutil.rmtree(dstDirectory)
             ignoreFiles = shutil.ignore_patterns("*steam_api.dll")
