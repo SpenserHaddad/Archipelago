@@ -1,24 +1,58 @@
 from __future__ import annotations
-import os
-import logging
+
 import asyncio
-import urllib.parse
-import sys
-import typing
-import bsdiff4
+import os
+import platform
 import shutil
+import typing
+import urllib.parse
+from pathlib import Path
+
+import bsdiff4
 
 import Utils
 
 if __name__ == "__main__":
     Utils.init_logging("UndertaleClient", exception_logger="Client")
 
-from NetUtils import NetworkItem, ClientStatus
-from worlds import undertale
+from CommonClient import (
+    ClientCommandProcessor,
+    CommonContext,
+    get_base_parser,
+    gui_enabled,
+    server_loop,
+)
 from MultiServer import mark_raw
-from CommonClient import CommonContext, server_loop, \
-    gui_enabled, ClientCommandProcessor, get_base_parser
+from NetUtils import ClientStatus, NetworkItem
 from Utils import async_start
+from worlds import undertale
+
+# Not sure if the Linux or OSX ones are correct or exhaustive but if you're not gaming
+# on Windows you're already prepared for disappointment.
+
+if platform.system() == "Windows":
+    _POSSIBLE_STEAM_PATHS = [
+        Path("C:") / "Program Files (x86)" / "Steam" / "steamapps" / "common",
+        Path("C:") / "Program Files" / "Steam" / "steamapps" / "common",
+    ]
+elif platform.system() == "Linux":
+    _POSSIBLE_STEAM_PATHS = [
+        Path.home() / ".local" / "share" / "Steam",
+        Path.home() / ".steam" / "steam" / "SteamApps" / "common",
+    ]
+elif platform.system() == "Darwin":
+    _POSSIBLE_STEAM_PATHS = [
+        Path.home()
+        / "Library"
+        / "Application Support"
+        / "Steam"
+        / "SteamApps"
+        / "common"
+    ]
+else:
+    # No idea what platform this is, but it probably can't install Undertale
+    _POSSIBLE_STEAM_PATHS = []
+
 
 class UndertaleCommandProcessor(ClientCommandProcessor):
     def __init__(self, ctx):
@@ -37,46 +71,56 @@ class UndertaleCommandProcessor(ClientCommandProcessor):
             self.output("Patched.")
 
     @mark_raw
-    def _cmd_auto_patch(self, steaminstall: typing.Optional[str] = None):
+    def _cmd_auto_patch(self, steamInstall: typing.Optional[str] = None):
         """Patch the game automatically."""
         if isinstance(self.ctx, UndertaleContext):
-            tempInstall = steaminstall
-            if tempInstall is None:
-                tempInstall = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Undertale"
-                if not os.path.exists("C:\\Program Files (x86)\\Steam\\steamapps\\common\\Undertale"):
-                    tempInstall = "C:\\Program Files\\Steam\\steamapps\\common\\Undertale"
-            elif not os.path.exists(tempInstall):
-                tempInstall = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Undertale"
-                if not os.path.exists("C:\\Program Files (x86)\\Steam\\steamapps\\common\\Undertale"):
-                    tempInstall = "C:\\Program Files\\Steam\\steamapps\\common\\Undertale"
-            if not os.path.exists(tempInstall) or not os.path.exists(tempInstall):
-                self.output("ERROR: Cannot find Undertale. Please rerun the command with the correct folder."
-                            " command. \"/auto_patch (Steam directory)\".")
-            else:
-                for file_name in os.listdir(tempInstall):
-                    if file_name != "steam_api.dll":
-                        shutil.copy(tempInstall+"\\"+file_name,
-                               os.getcwd() + "\\Undertale\\" + file_name)
-                self.ctx.patch_game()
-                self.output("Patching successful!")
+            if steamInstall is not None:
+                steamInstall = Path(steamInstall)
+            if steamInstall is None or not steamInstall.is_dir():
+                if steamInstall is not None:
+                    self.output(
+                        f"{steamInstall} does not exist, trying default directories."
+                    )
+
+                for steamPath in _POSSIBLE_STEAM_PATHS:
+                    self.output(f"Searching for Undertale in {steamPath}.")
+                    undertaleDir = steamPath / "Undertale"
+                    if undertaleDir.is_dir():
+                        steamInstall = undertaleDir
+                        break
+                else:
+                    self.output(
+                        "ERROR: Cannot find Undertale. Please rerun the command with "
+                        "the correct folder.\n"
+                        '  command: "/auto_patch <Steam directory>/steamapps/common/Undertale".'
+                    )
+                    return
+
+            dstDirectory = Path(os.getcwd()) / "Undertale"
+            if dstDirectory.is_dir():
+                shutil.rmtree(dstDirectory)
+            ignoreFiles = shutil.ignore_patterns("*steam_api.dll")
+            shutil.copytree(steamInstall, dstDirectory, ignore=ignoreFiles)
+            self.ctx.patch_game()
+            self.output("Patching successful!")
 
     def _cmd_online(self):
         """Makes you no longer able to see other Undertale players."""
         if isinstance(self.ctx, UndertaleContext):
             self.ctx.update_online_mode(not ("Online" in self.ctx.tags))
             if "Online" in self.ctx.tags:
-                self.output(f"Now online.")
+                self.output("Now online.")
             else:
-                self.output(f"Now offline.")
+                self.output("Now offline.")
 
     def _cmd_deathlink(self):
         """Toggles deathlink"""
         if isinstance(self.ctx, UndertaleContext):
             self.ctx.deathlink_status = not self.ctx.deathlink_status
             if self.ctx.deathlink_status:
-                self.output(f"Deathlink enabled.")
+                self.output("Deathlink enabled.")
             else:
-                self.output(f"Deathlink disabled.")
+                self.output("Deathlink disabled.")
 
 
 class UndertaleContext(CommonContext):
@@ -106,11 +150,25 @@ class UndertaleContext(CommonContext):
             patchedFile = bsdiff4.patch(f.read(), undertale.data_path("patch.bsdiff"))
         with open(os.getcwd() + "/Undertale/data.win", "wb") as f:
             f.write(patchedFile)
-        os.makedirs(name=os.getcwd() + "\\Undertale\\" + "Custom Sprites", exist_ok=True)
-        with open(os.path.expandvars(os.getcwd() + "\\Undertale\\" + "Custom Sprites\\" +
-                                     "Which Character.txt"), "w") as f:
-            f.writelines(["// Put the folder name of the sprites you want to play as, make sure it is the only "
-                          "line other than this one.\n", "frisk"])
+        os.makedirs(
+            name=os.getcwd() + "\\Undertale\\" + "Custom Sprites", exist_ok=True
+        )
+        with open(
+            os.path.expandvars(
+                os.getcwd()
+                + "\\Undertale\\"
+                + "Custom Sprites\\"
+                + "Which Character.txt"
+            ),
+            "w",
+        ) as f:
+            f.writelines(
+                [
+                    "// Put the folder name of the sprites you want to play as, make sure it is the only "
+                    "line other than this one.\n",
+                    "frisk",
+                ]
+            )
             f.close()
 
     async def server_auth(self, password_requested: bool = False):
@@ -126,8 +184,21 @@ class UndertaleContext(CommonContext):
             for file in files:
                 if "check" in file or "scout" in file:
                     os.remove(os.path.join(root, file))
-                elif file.endswith((".item", ".victory", ".route", ".playerspot", ".mad", 
-                                            ".youDied", ".LV", ".mine", ".flag", ".hint", ".spot")):
+                elif file.endswith(
+                    (
+                        ".item",
+                        ".victory",
+                        ".route",
+                        ".playerspot",
+                        ".mad",
+                        ".youDied",
+                        ".LV",
+                        ".mine",
+                        ".flag",
+                        ".hint",
+                        ".spot",
+                    )
+                ):
                     os.remove(os.path.join(root, file))
 
     async def connect(self, address: typing.Optional[str] = None):
@@ -164,9 +235,7 @@ class UndertaleContext(CommonContext):
         from kvui import GameManager
 
         class UTManager(GameManager):
-            logging_pairs = [
-                ("Client", "Archipelago")
-            ]
+            logging_pairs = [("Client", "Archipelago")]
             base_title = "Archipelago Undertale Client"
 
         self.ui = UTManager(self)
@@ -204,12 +273,30 @@ async def process_undertale_cmd(ctx: UndertaleContext, cmd: str, args: dict):
         ctx.pieces_needed = args["slot_data"]["key_pieces"]
         ctx.tem_armor = args["slot_data"]["temy_armor_include"]
 
-        await ctx.send_msgs([{"cmd": "Get", "keys": [str(ctx.slot)+" RoutesDone neutral",
-                                                     str(ctx.slot)+" RoutesDone pacifist",
-                                                     str(ctx.slot)+" RoutesDone genocide"]}])
-        await ctx.send_msgs([{"cmd": "SetNotify", "keys": [str(ctx.slot)+" RoutesDone neutral",
-                                                           str(ctx.slot)+" RoutesDone pacifist",
-                                                           str(ctx.slot)+" RoutesDone genocide"]}])
+        await ctx.send_msgs(
+            [
+                {
+                    "cmd": "Get",
+                    "keys": [
+                        str(ctx.slot) + " RoutesDone neutral",
+                        str(ctx.slot) + " RoutesDone pacifist",
+                        str(ctx.slot) + " RoutesDone genocide",
+                    ],
+                }
+            ]
+        )
+        await ctx.send_msgs(
+            [
+                {
+                    "cmd": "SetNotify",
+                    "keys": [
+                        str(ctx.slot) + " RoutesDone neutral",
+                        str(ctx.slot) + " RoutesDone pacifist",
+                        str(ctx.slot) + " RoutesDone genocide",
+                    ],
+                }
+            ]
+        )
         if args["slot_data"]["only_flakes"]:
             with open(os.path.join(ctx.save_game_folder, "GenoNoChest.flag"), "w") as f:
                 f.close()
@@ -275,22 +362,28 @@ async def process_undertale_cmd(ctx: UndertaleContext, cmd: str, args: dict):
             f.write(toDraw)
             f.close()
     elif cmd == "Retrieved":
-        if str(ctx.slot)+" RoutesDone neutral" in args["keys"]:
-            if args["keys"][str(ctx.slot)+" RoutesDone neutral"] is not None:
-                ctx.completed_routes["neutral"] = args["keys"][str(ctx.slot)+" RoutesDone neutral"]
-        if str(ctx.slot)+" RoutesDone genocide" in args["keys"]:
-            if args["keys"][str(ctx.slot)+" RoutesDone genocide"] is not None:
-                ctx.completed_routes["genocide"] = args["keys"][str(ctx.slot)+" RoutesDone genocide"]
-        if str(ctx.slot)+" RoutesDone pacifist" in args["keys"]:
+        if str(ctx.slot) + " RoutesDone neutral" in args["keys"]:
+            if args["keys"][str(ctx.slot) + " RoutesDone neutral"] is not None:
+                ctx.completed_routes["neutral"] = args["keys"][
+                    str(ctx.slot) + " RoutesDone neutral"
+                ]
+        if str(ctx.slot) + " RoutesDone genocide" in args["keys"]:
+            if args["keys"][str(ctx.slot) + " RoutesDone genocide"] is not None:
+                ctx.completed_routes["genocide"] = args["keys"][
+                    str(ctx.slot) + " RoutesDone genocide"
+                ]
+        if str(ctx.slot) + " RoutesDone pacifist" in args["keys"]:
             if args["keys"][str(ctx.slot) + " RoutesDone pacifist"] is not None:
-                ctx.completed_routes["pacifist"] = args["keys"][str(ctx.slot)+" RoutesDone pacifist"]
+                ctx.completed_routes["pacifist"] = args["keys"][
+                    str(ctx.slot) + " RoutesDone pacifist"
+                ]
     elif cmd == "SetReply":
         if args["value"] is not None:
-            if str(ctx.slot)+" RoutesDone pacifist" == args["key"]:
+            if str(ctx.slot) + " RoutesDone pacifist" == args["key"]:
                 ctx.completed_routes["pacifist"] = args["value"]
-            elif str(ctx.slot)+" RoutesDone genocide" == args["key"]:
+            elif str(ctx.slot) + " RoutesDone genocide" == args["key"]:
                 ctx.completed_routes["genocide"] = args["value"]
-            elif str(ctx.slot)+" RoutesDone neutral" == args["key"]:
+            elif str(ctx.slot) + " RoutesDone neutral" == args["key"]:
                 ctx.completed_routes["neutral"] = args["value"]
     elif cmd == "ReceivedItems":
         start_index = args["index"]
@@ -300,8 +393,9 @@ async def process_undertale_cmd(ctx: UndertaleContext, cmd: str, args: dict):
         elif start_index != len(ctx.items_received):
             sync_msg = [{"cmd": "Sync"}]
             if ctx.locations_checked:
-                sync_msg.append({"cmd": "LocationChecks",
-                                 "locations": list(ctx.locations_checked)})
+                sync_msg.append(
+                    {"cmd": "LocationChecks", "locations": list(ctx.locations_checked)}
+                )
             await ctx.send_msgs(sync_msg)
         if start_index == len(ctx.items_received):
             counter = -1
@@ -309,8 +403,7 @@ async def process_undertale_cmd(ctx: UndertaleContext, cmd: str, args: dict):
             placedArmor = 0
             for item in args["items"]:
                 id = NetworkItem(*item).location
-                while NetworkItem(*item).location < 0 and \
-                        counter <= id:
+                while NetworkItem(*item).location < 0 and counter <= id:
                     id -= 1
                 if NetworkItem(*item).location < 0:
                     counter -= 1
@@ -318,58 +411,71 @@ async def process_undertale_cmd(ctx: UndertaleContext, cmd: str, args: dict):
                 with open(os.path.join(ctx.save_game_folder, filename), "w") as f:
                     if NetworkItem(*item).item == 77701:
                         if placedWeapon == 0:
-                            f.write(str(77013-11000))
+                            f.write(str(77013 - 11000))
                         elif placedWeapon == 1:
-                            f.write(str(77014-11000))
+                            f.write(str(77014 - 11000))
                         elif placedWeapon == 2:
-                            f.write(str(77025-11000))
+                            f.write(str(77025 - 11000))
                         elif placedWeapon == 3:
-                            f.write(str(77045-11000))
+                            f.write(str(77045 - 11000))
                         elif placedWeapon == 4:
-                            f.write(str(77049-11000))
+                            f.write(str(77049 - 11000))
                         elif placedWeapon == 5:
-                            f.write(str(77047-11000))
+                            f.write(str(77047 - 11000))
                         elif placedWeapon == 6:
-                            if str(ctx.route) == "genocide" or str(ctx.route) == "all_routes":
-                                f.write(str(77052-11000))
+                            if (
+                                str(ctx.route) == "genocide"
+                                or str(ctx.route) == "all_routes"
+                            ):
+                                f.write(str(77052 - 11000))
                             else:
-                                f.write(str(77051-11000))
+                                f.write(str(77051 - 11000))
                         else:
-                            f.write(str(77003-11000))
+                            f.write(str(77003 - 11000))
                         placedWeapon += 1
                     elif NetworkItem(*item).item == 77702:
                         if placedArmor == 0:
-                            f.write(str(77012-11000))
+                            f.write(str(77012 - 11000))
                         elif placedArmor == 1:
-                            f.write(str(77015-11000))
+                            f.write(str(77015 - 11000))
                         elif placedArmor == 2:
-                            f.write(str(77024-11000))
+                            f.write(str(77024 - 11000))
                         elif placedArmor == 3:
-                            f.write(str(77044-11000))
+                            f.write(str(77044 - 11000))
                         elif placedArmor == 4:
-                            f.write(str(77048-11000))
+                            f.write(str(77048 - 11000))
                         elif placedArmor == 5:
                             if str(ctx.route) == "genocide":
-                                f.write(str(77053-11000))
+                                f.write(str(77053 - 11000))
                             else:
-                                f.write(str(77046-11000))
-                        elif placedArmor == 6 and ((not str(ctx.route) == "genocide") or ctx.tem_armor):
+                                f.write(str(77046 - 11000))
+                        elif placedArmor == 6 and (
+                            (not str(ctx.route) == "genocide") or ctx.tem_armor
+                        ):
                             if str(ctx.route) == "all_routes":
-                                f.write(str(77053-11000))
+                                f.write(str(77053 - 11000))
                             elif str(ctx.route) == "genocide":
-                                f.write(str(77064-11000))
+                                f.write(str(77064 - 11000))
                             else:
-                                f.write(str(77050-11000))
-                        elif placedArmor == 7 and ctx.tem_armor and not str(ctx.route) == "genocide":
-                            f.write(str(77064-11000))
+                                f.write(str(77050 - 11000))
+                        elif (
+                            placedArmor == 7
+                            and ctx.tem_armor
+                            and not str(ctx.route) == "genocide"
+                        ):
+                            f.write(str(77064 - 11000))
                         else:
-                            f.write(str(77004-11000))
+                            f.write(str(77004 - 11000))
                         placedArmor += 1
                     else:
-                        f.write(str(NetworkItem(*item).item-11000))
+                        f.write(str(NetworkItem(*item).item - 11000))
                     f.close()
                 ctx.items_received.append(NetworkItem(*item))
-                if [item.item for item in ctx.items_received].count(77000) >= ctx.pieces_needed > 0:
+                if (
+                    [item.item for item in ctx.items_received].count(77000)
+                    >= ctx.pieces_needed
+                    > 0
+                ):
                     filename = f"{str(-99999)}PLR{str(0)}.item"
                     with open(os.path.join(ctx.save_game_folder, filename), "w") as f:
                         f.write(str(77787 - 11000))
@@ -394,8 +500,13 @@ async def process_undertale_cmd(ctx: UndertaleContext, cmd: str, args: dict):
             if data["player"] != ctx.slot and data["player"] is not None:
                 filename = f"FRISK" + str(data["player"]) + ".playerspot"
                 with open(os.path.join(ctx.save_game_folder, filename), "w") as f:
-                    f.write(str(data["x"]) + str(data["y"]) + str(data["room"]) + str(
-                        data["spr"]) + str(data["frm"]))
+                    f.write(
+                        str(data["x"])
+                        + str(data["y"])
+                        + str(data["room"])
+                        + str(data["spr"])
+                        + str(data["frm"])
+                    )
                     f.close()
 
 
@@ -412,9 +523,20 @@ async def multi_watcher(ctx: UndertaleContext):
                         this_sprite = mine.readline()
                         this_frame = mine.readline()
                         mine.close()
-                    message = [{"cmd": "Bounce", "tags": ["Online"],
-                                "data": {"player": ctx.slot, "x": this_x, "y": this_y, "room": this_room,
-                                         "spr": this_sprite, "frm": this_frame}}]
+                    message = [
+                        {
+                            "cmd": "Bounce",
+                            "tags": ["Online"],
+                            "data": {
+                                "player": ctx.slot,
+                                "x": this_x,
+                                "y": this_y,
+                                "room": this_room,
+                                "spr": this_sprite,
+                                "frm": this_frame,
+                            },
+                        }
+                    ]
                     await ctx.send_msgs(message)
 
         await asyncio.sleep(0.1)
@@ -428,15 +550,19 @@ async def game_watcher(ctx: UndertaleContext):
             for root, dirs, files in os.walk(path):
                 for file in files:
                     if ".item" in file:
-                        os.remove(root+"/"+file)
+                        os.remove(root + "/" + file)
             sync_msg = [{"cmd": "Sync"}]
             if ctx.locations_checked:
-                sync_msg.append({"cmd": "LocationChecks", "locations": list(ctx.locations_checked)})
+                sync_msg.append(
+                    {"cmd": "LocationChecks", "locations": list(ctx.locations_checked)}
+                )
             await ctx.send_msgs(sync_msg)
             ctx.syncing = False
         if ctx.got_deathlink:
             ctx.got_deathlink = False
-            with open(os.path.join(ctx.save_game_folder, "/WelcomeToTheDead.youDied"), "w") as f:
+            with open(
+                os.path.join(ctx.save_game_folder, "/WelcomeToTheDead.youDied"), "w"
+            ) as f:
                 f.close()
         sending = []
         victory = False
@@ -444,37 +570,80 @@ async def game_watcher(ctx: UndertaleContext):
         for root, dirs, files in os.walk(path):
             for file in files:
                 if "DontBeMad.mad" in file and "DeathLink" in ctx.tags:
-                    os.remove(root+"/"+file)
+                    os.remove(root + "/" + file)
                     await ctx.send_death()
                 if "scout." in file:
-                    if ctx.server_locations.__contains__(int(file.split(".")[1])+12000):
-                        await ctx.send_msgs([{"cmd": "LocationScouts", "locations": [int(file.split(".")[1])+12000],
-                                              "create_as_hint": int(2)}])
-                    os.remove(root+"/"+file)
+                    if ctx.server_locations.__contains__(
+                        int(file.split(".")[1]) + 12000
+                    ):
+                        await ctx.send_msgs(
+                            [
+                                {
+                                    "cmd": "LocationScouts",
+                                    "locations": [int(file.split(".")[1]) + 12000],
+                                    "create_as_hint": int(2),
+                                }
+                            ]
+                        )
+                    os.remove(root + "/" + file)
                 if "check " in file:
                     st = file.split("check ", -1)[1]
                     st = st.split(".spot", -1)[0]
-                    sending = sending+[(int(st))+12000]
+                    sending = sending + [(int(st)) + 12000]
                     message = [{"cmd": "LocationChecks", "locations": sending}]
                     await ctx.send_msgs(message)
                 if "victory" in file and str(ctx.route) in file:
                     victory = True
                 if ".playerspot" in file and "Online" not in ctx.tags:
-                    os.remove(root+"/"+file)
+                    os.remove(root + "/" + file)
                 if "victory" in file:
                     if str(ctx.route) == "all_routes":
                         if "neutral" in file and ctx.completed_routes["neutral"] != 1:
-                            await ctx.send_msgs([{"cmd": "Set", "key": str(ctx.slot)+" RoutesDone neutral",
-                                                  "default": 0, "want_reply": True, "operations": [{"operation": "max",
-                                                                                                    "value": 1}]}])
-                        elif "pacifist" in file and ctx.completed_routes["pacifist"] != 1:
-                            await ctx.send_msgs([{"cmd": "Set", "key": str(ctx.slot)+" RoutesDone pacifist",
-                                                  "default": 0, "want_reply": True, "operations": [{"operation": "max",
-                                                                                                    "value": 1}]}])
-                        elif "genocide" in file and ctx.completed_routes["genocide"] != 1:
-                            await ctx.send_msgs([{"cmd": "Set", "key": str(ctx.slot)+" RoutesDone genocide",
-                                                  "default": 0, "want_reply": True, "operations": [{"operation": "max",
-                                                                                                    "value": 1}]}])
+                            await ctx.send_msgs(
+                                [
+                                    {
+                                        "cmd": "Set",
+                                        "key": str(ctx.slot) + " RoutesDone neutral",
+                                        "default": 0,
+                                        "want_reply": True,
+                                        "operations": [
+                                            {"operation": "max", "value": 1}
+                                        ],
+                                    }
+                                ]
+                            )
+                        elif (
+                            "pacifist" in file and ctx.completed_routes["pacifist"] != 1
+                        ):
+                            await ctx.send_msgs(
+                                [
+                                    {
+                                        "cmd": "Set",
+                                        "key": str(ctx.slot) + " RoutesDone pacifist",
+                                        "default": 0,
+                                        "want_reply": True,
+                                        "operations": [
+                                            {"operation": "max", "value": 1}
+                                        ],
+                                    }
+                                ]
+                            )
+                        elif (
+                            "genocide" in file and ctx.completed_routes["genocide"] != 1
+                        ):
+                            await ctx.send_msgs(
+                                [
+                                    {
+                                        "cmd": "Set",
+                                        "key": str(ctx.slot) + " RoutesDone genocide",
+                                        "default": 0,
+                                        "want_reply": True,
+                                        "operations": [
+                                            {"operation": "max", "value": 1}
+                                        ],
+                                    }
+                                ]
+                            )
         if str(ctx.route) == "all_routes":
             found_routes += ctx.completed_routes["neutral"]
             found_routes += ctx.completed_routes["pacifist"]
@@ -483,7 +652,9 @@ async def game_watcher(ctx: UndertaleContext):
             victory = True
         ctx.locations_checked = sending
         if (not ctx.finished_game) and victory:
-            await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
+            await ctx.send_msgs(
+                [{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}]
+            )
             ctx.finished_game = True
         await asyncio.sleep(0.1)
 
@@ -494,11 +665,9 @@ if __name__ == "__main__":
         ctx = UndertaleContext(args.connect, args.password)
         ctx.auth = args.name
         ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
-        asyncio.create_task(
-            game_watcher(ctx), name="UndertaleProgressionWatcher")
+        asyncio.create_task(game_watcher(ctx), name="UndertaleProgressionWatcher")
 
-        asyncio.create_task(
-            multi_watcher(ctx), name="UndertaleMultiplayerWatcher")
+        asyncio.create_task(multi_watcher(ctx), name="UndertaleMultiplayerWatcher")
 
         if gui_enabled:
             ctx.run_gui()
