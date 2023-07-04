@@ -3,6 +3,7 @@ import logging
 from typing import Any, Dict, List
 
 from BaseClasses import CollectionState, Item, ItemClassification, Location, MultiWorld, Region, Tutorial
+from Options import ExcludeLocations
 from worlds.AutoWorld import WebWorld, World
 from . import Events, Items, Locations, Options, Regions, Rules
 
@@ -127,8 +128,7 @@ class DOOM1993World(World):
         # Forbid progression items to locations that can be missed and can't be picked up. (e.g. One-time timed
         # platform) Unless the user allows for it.
         if getattr(self.multiworld, "allow_death_logic")[self.player]:
-            for death_location in Locations.death_logic_locations:
-                self.multiworld.exclude_locations[self.player].add(death_location)
+            self.multiworld.exclude_locations[self.player] = ExcludeLocations(Locations.death_logic_locations)
             # self.multiworld.exclude_locations[self.player] += set(Locations.death_logic_locations)
     
     def create_item(self, name: str) -> DOOM1993Item:
