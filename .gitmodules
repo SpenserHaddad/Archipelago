@@ -1,0 +1,3 @@
+[submodule "worlds/bfbb"]
+	path = worlds/bfbb
+	url = https://github.com/Cyb3RGER/bfbb_ap_world.git
