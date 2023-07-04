@@ -127,7 +127,9 @@ class DOOM1993World(World):
         # Forbid progression items to locations that can be missed and can't be picked up. (e.g. One-time timed
         # platform) Unless the user allows for it.
         if getattr(self.multiworld, "allow_death_logic")[self.player]:
-            self.multiworld.exclude_locations[self.player] += set(Locations.death_logic_locations)
+            for death_location in Locations.death_logic_locations:
+                self.multiworld.exclude_locations[self.player].add(death_location)
+            # self.multiworld.exclude_locations[self.player] += set(Locations.death_logic_locations)
     
     def create_item(self, name: str) -> DOOM1993Item:
         item_id: int = self.item_name_to_id[name]
