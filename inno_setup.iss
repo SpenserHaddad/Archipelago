@@ -32,7 +32,7 @@ AllowNoIcons=yes
 SetupIconFile={#MyAppIcon}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ; you will likely have to remove the following signtool line when testing/debugging locally. Don't include that change in PRs.
-SignTool= signtool
+; SignTool= signtool
 LicenseFile= LICENSE
 WizardStyle= modern
 SetupLogging=yes
@@ -158,7 +158,6 @@ Name: "{group}\{#MyAppName} Starcraft 2 Client"; Filename: "{app}\ArchipelagoSta
 Name: "{group}\{#MyAppName} MegaMan Battle Network 3 Client"; Filename: "{app}\ArchipelagoMMBN3Client.exe"; Components: client/mmbn3
 Name: "{group}\{#MyAppName} The Legend of Zelda Client"; Filename: "{app}\ArchipelagoZelda1Client.exe"; Components: client/tloz
 Name: "{group}\{#MyAppName} Kingdom Hearts 2 Client"; Filename: "{app}\ArchipelagoKH2Client.exe"; Components: client/kh2
-Name: "{group}\{#MyAppName} Link's Awakening Client"; Filename: "{app}\ArchipelagoLinksAwakeningClient.exe"; Components: client/ladx
 Name: "{group}\{#MyAppName} Adventure Client"; Filename: "{app}\ArchipelagoAdventureClient.exe"; Components: client/advn
 Name: "{group}\{#MyAppName} Wargroove Client"; Filename: "{app}\ArchipelagoWargrooveClient.exe"; Components: client/wargroove
 Name: "{group}\{#MyAppName} Undertale Client"; Filename: "{app}\ArchipelagoUndertaleClient.exe"; Components: client/ut
@@ -488,7 +487,7 @@ begin
     '.gba');
 end;
 
-function AddGBARomPage(name: string): TInputFileWizardPage;
+function AddSMSRomPage(name: string): TInputFileWizardPage;
 begin
   Result :=
     CreateInputFilePage(
@@ -820,22 +819,6 @@ begin
   else
     Result := '';
 end;
-
-function GetBN3ROMPath(Param: string): string;
-begin
-  if Length(bn3rom) > 0 then
-    Result := bn3rom
-  else if Assigned(BN3ROMFilePage) then
-    begin
-      R := CompareStr(GetMD5OfFile(BN3ROMFilePage.Values[0]), '6fe31df0144759b34ad666badaacc442')
-      if R <> 0 then
-        MsgBox('MegaMan Battle Network 3 Blue ROM validation failed. Very likely wrong file.', mbInformation, MB_OK);
-
-      Result := BN3ROMFilePage.Values[0]
-    end
-  else
-    Result := '';
- end;
 
 procedure InitializeWizard();
 begin
