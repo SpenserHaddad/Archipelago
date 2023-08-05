@@ -62,7 +62,6 @@ from Cython.Build import cythonize
 
 
 # On  Python < 3.10 LogicMixin is not currently supported.
-<<<<<<< HEAD
 non_apworlds: set = {
     "A Link to the Past",
     "Adventure",
@@ -86,7 +85,7 @@ non_apworlds: set = {
     "VVVVVV",
     "Wargroove",
     "Zillion",
-=======
+}
 apworlds: set = {
     "Subnautica",
     "Factorio",
@@ -102,7 +101,6 @@ apworlds: set = {
     "Super Metroid",
     "SMZ3",
     "Pokemon Emerald",
->>>>>>> Zunawe/emerald-stable
 }
 
 # LogicMixin is broken before 3.10 import revamp
