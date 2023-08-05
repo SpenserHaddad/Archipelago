@@ -594,6 +594,12 @@ TWTNW_Checks = {
     LocationName.LuxordDataAPBoost:                     WorldLocationData(0x1EDA, 1),
     LocationName.RoxasDataMagicBoost:                   WorldLocationData(0x1ED9, 6),
 }
+Atlantica_Checks = {
+    LocationName.UnderseaKingdomMap:     WorldLocationData(0x1DF4, 2),
+    LocationName.MysteriousAbyss:        WorldLocationData(0x1DF5, 3),
+    LocationName.MusicalOrichalcumPlus:  WorldLocationData(0x1DF4, 1),
+    LocationName.MusicalBlizzardElement: WorldLocationData(0x1DF4, 1)
+}
 SoraLevels = {
     # LocationName.Lvl1:  WorldLocationData(0xFFFF,1),
     LocationName.Lvl2:  WorldLocationData(0xFFFF, 2),
@@ -744,6 +750,15 @@ FinalLevels = {
     LocationName.Finallvl7: WorldLocationData(0x33D6, 7),
 
 }
+SummonLevels = {
+    LocationName.Summonlvl2: WorldLocationData(0x3526, 2),
+    LocationName.Summonlvl3: WorldLocationData(0x3526, 3),
+    LocationName.Summonlvl4: WorldLocationData(0x3526, 4),
+    LocationName.Summonlvl5: WorldLocationData(0x3526, 5),
+    LocationName.Summonlvl6: WorldLocationData(0x3526, 6),
+    LocationName.Summonlvl7: WorldLocationData(0x3526, 7),
+
+}
 weaponSlots = {
     LocationName.AdamantShield:       WorldLocationData(0x35E6, 1),
     LocationName.AkashicRecord:       WorldLocationData(0x35ED, 1),
@@ -833,6 +848,7 @@ all_world_locations = {
     **SP_Checks,
     **TWTNW_Checks,
     **HB_Checks,
+    **Atlantica_Checks,
 }
 
 levels_locations = {
