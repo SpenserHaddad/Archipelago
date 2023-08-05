@@ -246,8 +246,115 @@ OptionsType = Settings  # TODO: remove ~2 versions after 0.4.1
 
 
 @cache_argsless
-def get_default_options() -> Settings:  # TODO: remove ~2 versions after 0.4.1
-    return Settings(None)
+def get_default_options() -> OptionsType:
+    # Refer to host.yaml for comments as to what all these options mean.
+    options = {
+        "general_options": {
+            "output_path": "output",
+        },
+        "factorio_options": {
+            "executable": os.path.join("factorio", "bin", "x64", "factorio"),
+            "filter_item_sends": False,
+            "bridge_chat_out": True,
+        },
+        "sni_options": {
+            "sni_path": "SNI",
+            "snes_rom_start": True,
+        },
+        "sm_options": {
+            "rom_file": "Super Metroid (JU).sfc",
+        },
+        "soe_options": {
+            "rom_file": "Secret of Evermore (USA).sfc",
+        },
+        "lttp_options": {
+            "rom_file": "Zelda no Densetsu - Kamigami no Triforce (Japan).sfc",
+        },
+        "ladx_options": {
+            "rom_file": "Legend of Zelda, The - Link's Awakening DX (USA, Europe) (SGB Enhanced).gbc",
+        },
+        "server_options": {
+            "host": None,
+            "port": 38281,
+            "password": None,
+            "multidata": None,
+            "savefile": None,
+            "disable_save": False,
+            "loglevel": "info",
+            "server_password": None,
+            "disable_item_cheat": False,
+            "location_check_points": 1,
+            "hint_cost": 10,
+            "release_mode": "goal",
+            "collect_mode": "disabled",
+            "remaining_mode": "goal",
+            "auto_shutdown": 0,
+            "compatibility": 2,
+            "log_network": 0
+        },
+        "generator": {
+            "enemizer_path": os.path.join("EnemizerCLI", "EnemizerCLI.Core"),
+            "player_files_path": "Players",
+            "players": 0,
+            "weights_file_path": "weights.yaml",
+            "meta_file_path": "meta.yaml",
+            "spoiler": 3,
+            "glitch_triforce_room": 1,
+            "race": 0,
+            "plando_options": "bosses",
+        },
+        "minecraft_options": {
+            "forge_directory": "Minecraft Forge server",
+            "max_heap_size": "2G",
+            "release_channel": "release"
+        },
+        "oot_options": {
+            "rom_file": "The Legend of Zelda - Ocarina of Time.z64",
+            "rom_start": True
+        },
+        "dkc3_options": {
+            "rom_file": "Donkey Kong Country 3 - Dixie Kong's Double Trouble! (USA) (En,Fr).sfc",
+        },
+        "smw_options": {
+            "rom_file": "Super Mario World (USA).sfc",
+        },
+        "zillion_options": {
+            "rom_file": "Zillion (UE) [!].sms",
+            # RetroArch doesn't make it easy to launch a game from the command line.
+            # You have to know the path to the emulator core library on the user's computer.
+            "rom_start": "retroarch",
+        },
+        "pokemon_rb_options": {
+            "red_rom_file": "Pokemon Red (UE) [S][!].gb",
+            "blue_rom_file": "Pokemon Blue (UE) [S][!].gb",
+            "rom_start": True
+        },
+        "pokemon_emerald_options": {
+            "rom_file": "Pokemon - Emerald Version (USA, Europe).gba",
+            "rom_start": True
+        },
+        "ffr_options": {
+            "display_msgs": True,
+        },
+        "lufia2ac_options": {
+            "rom_file": "Lufia II - Rise of the Sinistrals (USA).sfc",
+        },
+        "tloz_options": {
+            "rom_file": "Legend of Zelda, The (U) (PRG0) [!].nes",
+            "rom_start": True,
+            "display_msgs": True,
+        },
+        "wargroove_options": {
+            "root_directory": "C:/Program Files (x86)/Steam/steamapps/common/Wargroove"
+        },
+        "adventure_options": {
+            "rom_file": "ADVNTURE.BIN",
+            "display_msgs": True,
+            "rom_start": True,
+            "rom_args": ""
+        },
+    }
+    return options
 
 
 get_options = get_settings  # TODO: add a warning ~2 versions after 0.4.1 and remove once all games are ported
