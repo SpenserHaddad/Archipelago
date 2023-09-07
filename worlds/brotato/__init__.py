@@ -1,20 +1,14 @@
 import logging
-from typing import List
 
-from BaseClasses import Item, Location, MultiWorld, Tutorial
+from BaseClasses import ItemClassification, MultiWorld, Tutorial
 from worlds.AutoWorld import WebWorld, World
 
-from . import Items, Locations, Options
+from . import Options
+from .Items import BrotatoItem, item_name_groups, item_table, ItemName
+from .Locations import location_table
+from .Regions import create_regions
 
 logger = logging.getLogger("Brotato")
-
-
-class BrotatoLocation(Location):
-    game: str = "Brotato"
-
-
-class BrotatoItem(Item):
-    game: str = "Brotato"
 
 
 class BrotatoWeb(WebWorld):
@@ -45,11 +39,15 @@ class BrotatoWorld(World):
     data_version = 3
     required_client_version = (0, 4, 2)
 
-    item_name_to_id = {item.id: item for item in Items.item_table}
-    item_name_groups = Items.item_name_groups
+    item_name_to_id = {item.name.value: code for code, item in item_table.items()}
+    item_name_groups = item_name_groups
 
-    location_name_to_id = {data["name"]: loc_id for loc_id, data in Locations.location_table.items()}
-    location_name_groups = Locations.location_name_groups
+    _filler_items = [
+        item.name.value for item in item_table.values() if item.classification == ItemClassification.filler
+    ]
+
+    location_name_to_id = {loc.name: loc.id for loc in location_table}
+    # location_name_groups = location_name_groups
 
     def __init__(self, world: MultiWorld, player: int):
         super().__init__(world, player)
@@ -60,27 +58,36 @@ class BrotatoWorld(World):
     def set_rules(self):
         pass
 
-    def create_item(self, name: str) -> BrotatoItem:
-        item_id: int = self.item_name_to_id[name]
-        return BrotatoItem(name, Items.item_table[item_id]["classification"], item_id, self.player)
+    def create_regions(self) -> None:
+        create_regions(self.multiworld, self.player)
+
+    def create_item(self, name: str | ItemName) -> BrotatoItem:
+        if isinstance(name, ItemName):
+            name = name.value
+        return BrotatoItem.from_item_base(item_table[self.item_name_to_id[name]], self.player)
 
     def create_items(self):
-        itempool: List[BrotatoItem] = []
+        item_names: list[ItemName] = []
+
+        for _ in range(39):
+            item_names.append(ItemName.PROGRESSIVE_CHARACTER)
+
+        for _ in range(self.multiworld.num_common_items[self.player]):
+            item_names.append(ItemName.COMMON_ITEM)
+
+        for _ in range(self.multiworld.num_uncommon_items[self.player]):
+            item_names.append(ItemName.UNCOMMON_ITEM)
+
+        for _ in range(self.multiworld.num_rare_items[self.player]):
+            item_names.append(ItemName.RARE_ITEM)
+
+        for _ in range(self.multiworld.num_legendary_items[self.player]):
+            item_names.append(ItemName.LEGENDARY_ITEM)
+
+        itempool = [self.create_item(item_name) for item_name in item_names]
+        logger.debug(f"Adding {len(itempool)} items")
+        logger.debug(f"Number of locations: {len(location_table)}")
         self.multiworld.itempool += itempool
 
     def get_filler_item_name(self):
-        return self.multiworld.random.choice(
-            [
-                "XP (5)",
-                "XP (10)",
-                "XP (25)",
-                "XP (50)",
-                "XP (100)",
-                "XP (150)",
-                "Gold (10)",
-                "Gold (25)",
-                "Gold (50)",
-                "Gold (100)",
-                "Gold (200)",
-            ]
-        )
+        return self.multiworld.random.choice(self._filler_items)
