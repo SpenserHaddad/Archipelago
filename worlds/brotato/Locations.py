@@ -1,11 +1,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from itertools import product
 from typing import ClassVar
 
-from .Constants import BASE_ID
+from .Constants import (
+    BASE_ID,
+    CHARACTERS,
+    MAX_LEGENDARY_ITEM_DROPS,
+    MAX_NORMAL_ITEM_DROPS,
+    MAX_SHOP_LOCATIONS_PER_TIER,
+    MAX_REQUIRED_RUN_WINS,
+    NUM_WAVES,
+)
 
 
+# TODO: Subclass base Location
 @dataclass(frozen=True)
 class BrotatoLocation:
     name: str
@@ -22,34 +32,33 @@ class BrotatoLocation:
         object.__setattr__(self, "id", id_)
 
 
-# _locations = [
-#     BrotatoLocation(name="Wave 1"),
-#     BrotatoLocation(name="Wave 2"),
-#     BrotatoLocation(name="Wave 3"),
-#     BrotatoLocation(name="Wave 4"),
-#     BrotatoLocation(name="Wave 5"),
-#     BrotatoLocation(name="Wave 6"),
-#     BrotatoLocation(name="Wave 7"),
-#     BrotatoLocation(name="Wave 8"),
-#     BrotatoLocation(name="Wave 9"),
-#     BrotatoLocation(name="Wave 10"),
-#     BrotatoLocation(name="Wave 11"),
-#     BrotatoLocation(name="Wave 12"),
-#     BrotatoLocation(name="Wave 13"),
-#     BrotatoLocation(name="Wave 14"),
-#     BrotatoLocation(name="Wave 15"),
-#     BrotatoLocation(name="Wave 16"),
-#     BrotatoLocation(name="Wave 17"),
-#     BrotatoLocation(name="Wave 18"),
-#     BrotatoLocation(name="Wave 19"),
-#     BrotatoLocation(name="Wave 20"),
-#     BrotatoLocation(name="Run Complete", is_event=True),
-# ]
+_wave_count = range(NUM_WAVES)
+_run_count = range(MAX_REQUIRED_RUN_WINS)
+
+_char_generic_wave_complete_locs = [
+    BrotatoLocation(name=f"Run {r} - Wave {w} Complete") for w, r in product(_wave_count, _run_count)
+]
+_char_specific_wave_complete_locs = [
+    BrotatoLocation(name=f"Wave {w} Complete ({char})") for w, char in product(_wave_count, CHARACTERS)
+]
+_char_generic_run_complete_locs = [BrotatoLocation(name=f"Run {r} Complete") for r in range(MAX_REQUIRED_RUN_WINS)]
+_char_specific_run_complete_locs = [BrotatoLocation(name=f"Run Complete ({char})") for char in CHARACTERS]
+_shop_item_locs = []
+for tier, max_shop_locs in MAX_SHOP_LOCATIONS_PER_TIER.items():
+    _shop_item_locs += [BrotatoLocation(name=f"{tier.name} Shop Item {i}") for i in range(max_shop_locs)]
+
+_normal_item_drop_locs = [BrotatoLocation(name=f"Crate Drop {i}") for i in range(MAX_NORMAL_ITEM_DROPS)]
+_legendary_item_drop_locs = [BrotatoLocation(name=f"Legendary Crate Drop {i}") for i in range(MAX_LEGENDARY_ITEM_DROPS)]
 
 location_table: list[BrotatoLocation] = [
-    *[BrotatoLocation(name=f"Common Pickup {i}") for i in range(25)],
-    *[BrotatoLocation(name=f"Uncommon Pickup {i}") for i in range(10)],
-    *[BrotatoLocation(name=f"Rare Pickup {i}") for i in range(10)],
-    *[BrotatoLocation(name=f"Legendary Pickup {i}") for i in range(10)],
-    *[BrotatoLocation(name=f"Shop Item {i}") for i in range(10)],
+    *_char_generic_wave_complete_locs,
+    *_char_specific_wave_complete_locs,
+    *_char_generic_run_complete_locs,
+    *_char_specific_run_complete_locs,
+    *_shop_item_locs,
+    *_normal_item_drop_locs,
+    *_legendary_item_drop_locs,
 ]
+
+location_id_to_name: dict[int, str] = {loc.id: loc.name for loc in location_table}
+location_name_to_id: dict[str, int] = {v: k for k, v in location_id_to_name.items()}
