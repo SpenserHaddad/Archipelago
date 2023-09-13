@@ -46,6 +46,7 @@ class ItemName(Enum):
     GOLD_100 = "Gold (100)"
     GOLD_200 = "Gold (200)"
     PROGRESSIVE_CHARACTER = "Progressive Character"
+    RUN_COMPLETE = "Run Complete"
 
 
 _items: list[BrotatoItemBase] = [
@@ -68,6 +69,7 @@ _items: list[BrotatoItemBase] = [
         name=ItemName.PROGRESSIVE_CHARACTER,
         classification=ItemClassification.progression,
     ),
+    BrotatoItemBase(name=ItemName.RUN_COMPLETE, classification=ItemClassification.progression),
 ]
 
 item_table = {item.code: item for item in _items}
