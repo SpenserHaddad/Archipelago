@@ -7,10 +7,10 @@ from typing import ClassVar
 from .Constants import (
     BASE_ID,
     CHARACTERS,
-    MAX_LEGENDARY_ITEM_DROPS,
-    MAX_NORMAL_ITEM_DROPS,
-    MAX_SHOP_LOCATIONS_PER_TIER,
+    MAX_LEGENDARY_CRATE_DROPS,
+    MAX_NORMAL_CRATE_DROPS,
     MAX_REQUIRED_RUN_WINS,
+    MAX_SHOP_LOCATIONS_PER_TIER,
     NUM_WAVES,
 )
 
@@ -47,8 +47,10 @@ _shop_item_locs = []
 for tier, max_shop_locs in MAX_SHOP_LOCATIONS_PER_TIER.items():
     _shop_item_locs += [BrotatoLocation(name=f"{tier.name} Shop Item {i}") for i in range(max_shop_locs)]
 
-_normal_item_drop_locs = [BrotatoLocation(name=f"Crate Drop {i}") for i in range(MAX_NORMAL_ITEM_DROPS)]
-_legendary_item_drop_locs = [BrotatoLocation(name=f"Legendary Crate Drop {i}") for i in range(MAX_LEGENDARY_ITEM_DROPS)]
+_normal_item_drop_locs = [BrotatoLocation(name=f"Crate Drop {i}") for i in range(MAX_NORMAL_CRATE_DROPS)]
+_legendary_item_drop_locs = [
+    BrotatoLocation(name=f"Legendary Crate Drop {i}") for i in range(MAX_LEGENDARY_CRATE_DROPS)
+]
 
 location_table: list[BrotatoLocation] = [
     *_char_generic_wave_complete_locs,
