@@ -14,54 +14,55 @@ class ItemRarity(Enum):
     LEGENDARY = "Legendary"
 
 
-CHARACTERS = [
+CHARACTERS = {
     "Well Rounded",
     "Brawler",
-    "Crazy"
-    "Ranger"
-    "Mage"
-    "Chunky"
-    "Old"
-    "Lucky"
-    "Mutant"
-    "Generalist"
-    "Loud"
-    "Multitasker"
-    "Wildling"
-    "Pacifist"
-    "Gladiator"
-    "Saver"
-    "Sick"
-    "Farmer"
-    "Ghost"
-    "Speedy"
-    "Entrepeneur"
-    "Engineer"
-    "Explorer"
-    "Doctor"
-    "Hunter"
-    "Artificer"
-    "Arms Dealer"
-    "Streamer"
-    "Cyborg"
-    "Glutton"
-    "Jack"
-    "Lich"
-    "Appentice"
-    "Cryptid"
-    "Fisherman"
-    "Golem"
-    "King"
-    "Renegade"
-    "One Armed"
-    "Bull"
-    "Soldier"
-    "Masochist"
-    "Knight"
+    "Crazy",
+    "Ranger",
+    "Mage",
+    "Chunky",
+    "Old",
+    "Lucky",
+    "Mutant",
+    "Generalist",
+    "Loud",
+    "Multitasker",
+    "Wildling",
+    "Pacifist",
+    "Gladiator",
+    "Saver",
+    "Sick",
+    "Farmer",
+    "Ghost",
+    "Speedy",
+    "Entrepeneur",
+    "Engineer",
+    "Explorer",
+    "Doctor",
+    "Hunter",
+    "Artificer",
+    "Arms Dealer",
+    "Streamer",
+    "Cyborg",
+    "Glutton",
+    "Jack",
+    "Lich",
+    "Appentice",
+    "Cryptid",
+    "Fisherman",
+    "Golem",
+    "King",
+    "Renegade",
+    "One Armed",
+    "Bull",
+    "Soldier",
+    "Masochist",
+    "Knight",
     "Demon",
-]
+}
 
-DEFAULT_CHARACTERS = ["Well Rounded", "Brawler", "Crazy" "Ranger", "Mage"]
+DEFAULT_CHARACTERS = {"Well Rounded", "Brawler", "Crazy", "Ranger", "Mage"}
+UNLOCKABLE_CHARACTERS = CHARACTERS - DEFAULT_CHARACTERS
 
 MAX_REQUIRED_RUN_WINS = 50
 
