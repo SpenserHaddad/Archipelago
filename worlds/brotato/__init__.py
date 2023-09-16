@@ -1,12 +1,15 @@
 import logging
 
-from BaseClasses import ItemClassification, MultiWorld, Tutorial
+from BaseClasses import MultiWorld, Tutorial
 from worlds.AutoWorld import WebWorld, World
 
 from . import Options
-from .Items import BrotatoItem, item_name_groups, item_table, ItemName
-from .Locations import location_table
+from .Constants import DEFAULT_CHARACTERS, CHARACTERS, NUM_WAVES, UNLOCKABLE_CHARACTERS
+from .Items import BrotatoItem, filler_items, ItemName, item_name_groups, item_name_to_id, item_table
+from .Locations import location_name_to_id, location_name_groups
 from .Regions import create_regions
+
+# from .Rules import set_rules
 
 logger = logging.getLogger("Brotato")
 
@@ -36,58 +39,85 @@ class BrotatoWorld(World):
     option_definitions = Options.options
     game = "Brotato"
     web = BrotatoWeb()
-    data_version = 3
+    data_version = 0
     required_client_version = (0, 4, 2)
 
-    item_name_to_id = {item.name.value: code for code, item in item_table.items()}
+    item_name_to_id = item_name_to_id
     item_name_groups = item_name_groups
 
-    _filler_items = [
-        item.name.value for item in item_table.values() if item.classification == ItemClassification.filler
-    ]
+    _filler_items = filler_items
 
-    location_name_to_id = {loc.name: loc.id for loc in location_table}
-    # location_name_groups = location_name_groups
+    location_name_to_id = location_name_to_id
+    location_name_groups = location_name_groups
+
+    # Which waves will count as locations, derived from player options in generate_early
+    waves_with_drops: int
 
     def __init__(self, world: MultiWorld, player: int):
         super().__init__(world, player)
 
-    def generate_early(self):
-        pass
+    def create_item(self, name: str | ItemName) -> BrotatoItem:
+        if isinstance(name, ItemName):
+            name = name.value
+        return item_table[self.item_name_to_id[name]].to_item(self.player)
 
-    def set_rules(self):
-        pass
+    def generate_early(self):
+        waves_per_drop = self.multiworld.waves_per_drop[self.player]
+        # Ignore 0 value, but choosing a different start gives the wrong wave results
+        self.waves_with_drops = list(range(0, NUM_WAVES, waves_per_drop))[1:]
+
+    # def set_rules(self):
+    #     set_rules(self)
 
     def create_regions(self) -> None:
         create_regions(self.multiworld, self.player)
 
-    def create_item(self, name: str | ItemName) -> BrotatoItem:
-        if isinstance(name, ItemName):
-            name = name.value
-        return BrotatoItem.from_item_base(item_table[self.item_name_to_id[name]], self.player)
-
     def create_items(self):
         item_names: list[ItemName] = []
 
-        for _ in range(39):
-            item_names.append(ItemName.PROGRESSIVE_CHARACTER)
+        self.multiworld.start_inventory[self.player]
+        for dc in DEFAULT_CHARACTERS:
+            self.multiworld.push_precollected(self.create_item(dc))
 
-        for _ in range(self.multiworld.num_common_items[self.player]):
+        item_names += [c for c in item_name_groups["Characters"] if c in UNLOCKABLE_CHARACTERS]
+        # item_names += [ItemName.RUN_COMPLETE] * len(CHARACTERS)
+
+        # Add an item to receive for each crate drop location, as backfill
+        for _ in range(self.multiworld.num_common_crate_drops[self.player]):
+            # TODO: Can be any item rarity, but need to choose a ratio. Check wiki for rates?
             item_names.append(ItemName.COMMON_ITEM)
 
-        for _ in range(self.multiworld.num_uncommon_items[self.player]):
-            item_names.append(ItemName.UNCOMMON_ITEM)
-
-        for _ in range(self.multiworld.num_rare_items[self.player]):
-            item_names.append(ItemName.RARE_ITEM)
-
-        for _ in range(self.multiworld.num_legendary_items[self.player]):
+        for _ in range(self.multiworld.num_legendary_crate_drops[self.player]):
             item_names.append(ItemName.LEGENDARY_ITEM)
 
+        for _ in range(self.multiworld.num_shop_items[self.player]):
+            pass
+
         itempool = [self.create_item(item_name) for item_name in item_names]
-        logger.debug(f"Adding {len(itempool)} items")
-        logger.debug(f"Number of locations: {len(location_table)}")
+
+        total_locations = (
+            self.multiworld.num_common_crate_drops[self.player]
+            + self.multiworld.num_legendary_crate_drops[self.player]
+            + (len(self.waves_with_drops) * len(CHARACTERS))
+            + len(CHARACTERS)  # Number of run wins
+            # + self.multiworld.num_shop_items[self.player] # Not implemented yet
+        )
+        num_filler_items = total_locations - len(itempool)
+        itempool += [self.create_filler() for _ in range(num_filler_items)]
+
         self.multiworld.itempool += itempool
+        self.multiworld.itempool
+
+    def generate_basic(self):
+        # Place "Run Won" items at the Run Won event locations
+        for loc in location_name_groups["Run Win Specific Character Events"]:
+            item = self.multiworld.create_item(ItemName.RUN_COMPLETE, self.player)
+            self.multiworld.get_location(loc, self.player).place_locked_item(item)
+
+        # Set victory condition (we're ignoring the set_rules one until we add the generic/specific win toggle back)
+        self.multiworld.completion_condition[self.player] = lambda state: state.has(
+            ItemName.RUN_COMPLETE.value, self.player, count=self.multiworld.num_victories[self.player]
+        )
 
     def get_filler_item_name(self):
         return self.multiworld.random.choice(self._filler_items)
