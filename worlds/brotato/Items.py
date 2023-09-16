@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import ClassVar
+from itertools import count
 
 from BaseClasses import Item, ItemClassification
 
 from .Constants import BASE_ID
+
+_id_generator = count(BASE_ID, step=1)
 
 
 class BrotatoItem(Item):
@@ -19,17 +21,14 @@ class BrotatoItemBase:
 
     name: ItemName
     classification: ItemClassification
-    code: int = field(init=False)
-    _next_offset: ClassVar[int] = 0
-
-    def __post_init__(self):
-        object.__setattr__(self, "code", BASE_ID + BrotatoItemBase._next_offset)
-        BrotatoItemBase._next_offset += 1
+    # Auto-increments ID without us having to manually set it, so item definition order matters.
+    code: int = field(default_factory=_id_generator.__next__)
 
     def to_item(self, player: int) -> BrotatoItem:
         return BrotatoItem(self.name.value, self.classification, self.code, player)
 
 
+# TODO: Add upgrade items
 class ItemName(Enum):
     COMMON_ITEM = "Common Item"
     UNCOMMON_ITEM = "Uncommon Item"
@@ -96,10 +95,10 @@ class ItemName(Enum):
 _char_items = [x for x in ItemName if x.name.startswith("CHARACTER_")]
 
 _items: list[BrotatoItemBase] = [
-    BrotatoItemBase(name=ItemName.COMMON_ITEM, classification=ItemClassification.filler),
-    BrotatoItemBase(name=ItemName.UNCOMMON_ITEM, classification=ItemClassification.filler),
-    BrotatoItemBase(name=ItemName.RARE_ITEM, classification=ItemClassification.filler),
-    BrotatoItemBase(name=ItemName.LEGENDARY_ITEM, classification=ItemClassification.filler),
+    BrotatoItemBase(name=ItemName.COMMON_ITEM, classification=ItemClassification.useful),
+    BrotatoItemBase(name=ItemName.UNCOMMON_ITEM, classification=ItemClassification.useful),
+    BrotatoItemBase(name=ItemName.RARE_ITEM, classification=ItemClassification.useful),
+    BrotatoItemBase(name=ItemName.LEGENDARY_ITEM, classification=ItemClassification.useful),
     BrotatoItemBase(name=ItemName.XP_5, classification=ItemClassification.filler),
     BrotatoItemBase(name=ItemName.XP_10, classification=ItemClassification.filler),
     BrotatoItemBase(name=ItemName.XP_25, classification=ItemClassification.filler),
