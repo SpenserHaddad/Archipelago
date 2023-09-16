@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from . import BrotatoWorld
 
 
-def _get_completion_condition(world: BrotatoWorld) -> Callable[[CollectionState], bool]:
+def _get_completion_condition(world: "BrotatoWorld") -> Callable[[CollectionState], bool]:
     num_required_wins = world.runs_required[world.player]
     if world.brotato_win_option[world.player] == "any":
         return partial(_completion_condition_any_character, num_required_wins, world.player)
@@ -32,7 +32,7 @@ def _completion_condition_specific_character(num_required_wins: int, player: int
     return won_runs >= num_required_wins
 
 
-def set_rules(world: BrotatoWorld):
+def set_rules(world: "BrotatoWorld"):
     world.multiworld.completion_condition[world.player] = _get_completion_condition(world)
     # player = brotato_world.player
     # world = brotato_world.multiworld
