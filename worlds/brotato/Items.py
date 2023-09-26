@@ -78,7 +78,7 @@ class ItemName(Enum):
     CHARACTER_GLUTTON = "Glutton"
     CHARACTER_JACK = "Jack"
     CHARACTER_LICH = "Lich"
-    CHARACTER_APPENTICE = "Appentice"
+    CHARACTER_APPRENTICE = "Apprentice"
     CHARACTER_CRYPTID = "Cryptid"
     CHARACTER_FISHERMAN = "Fisherman"
     CHARACTER_GOLEM = "Golem"
