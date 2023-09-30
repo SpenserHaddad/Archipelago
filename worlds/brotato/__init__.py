@@ -10,8 +10,6 @@ from .Locations import location_name_to_id, location_name_groups
 from .Regions import create_regions
 from .Rules import BrotatoLogic
 
-# from .Rules import set_rules
-
 logger = logging.getLogger("Brotato")
 
 

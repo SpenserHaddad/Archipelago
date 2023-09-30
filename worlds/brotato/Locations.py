@@ -46,14 +46,6 @@ class BrotatoLocationBase:
 _wave_count = range(NUM_WAVES)
 _run_count = range(MAX_REQUIRED_RUN_WINS)
 
-# _char_generic_wave_complete_locs = [
-#     BrotatoLocationBase(name=f"Run {r} - Wave {w} Complete") for w, r in product(_wave_count, _run_count)
-# ]
-# _char_generic_run_complete_locs = [BrotatoLocationBase(name=f"Run {r} Complete")for r in range(MAX_REQUIRED_RUN_WINS)]
-# _char_generic_run_complete_events = [
-#     BrotatoLocationBase(name=f"Run {r} Complete", is_event=True) for r in range(MAX_REQUIRED_RUN_WINS)
-# ]
-
 _char_specific_wave_complete_locs: list[BrotatoLocationBase] = []
 _char_specific_run_complete_locs: list[BrotatoLocationBase] = []
 character_specific_locations: dict[str, dict[str, int | None]] = {}
@@ -78,9 +70,6 @@ _legendary_item_drop_locs = [
 ]
 
 location_table: list[BrotatoLocationBase] = [
-    # *_char_generic_wave_complete_locs,
-    # *_char_generic_run_complete_locs,
-    # *_char_generic_run_complete_events,
     *_char_specific_wave_complete_locs,
     *_char_specific_run_complete_locs,
     *_shop_item_locs,
@@ -90,9 +79,6 @@ location_table: list[BrotatoLocationBase] = [
 
 location_name_to_id: dict[str, int] = {loc.name: loc.id for loc in location_table}
 location_name_groups: dict[str, set[str]] = {
-    # "Wave Complete Any Character": set(c.name for c in _char_generic_wave_complete_locs),
-    # "Run Win Any Character": set(c.name for c in _char_generic_run_complete_locs),
-    # "Run Win Any Character Events": set(c.name for c in _char_generic_run_complete_events),
     "Wave Complete Specific Character": set(c.name for c in _char_specific_wave_complete_locs),
     "Run Win Specific Character": set(c.name for c in _char_specific_run_complete_locs),
     "Normal Crate Drops": set(c.name for c in _normal_item_drop_locs),
