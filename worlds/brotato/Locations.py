@@ -56,20 +56,16 @@ _run_count = range(MAX_REQUIRED_RUN_WINS)
 
 _char_specific_wave_complete_locs: list[BrotatoLocationBase] = []
 _char_specific_run_complete_locs: list[BrotatoLocationBase] = []
-_char_specific_run_complete_events: list[BrotatoLocationBase] = []
 character_specific_locations: dict[str, dict[str, int | None]] = {}
 for char in CHARACTERS:
     _char_wave_complete_locations = [BrotatoLocationBase(name=f"Wave {w} Complete ({char})") for w in _wave_count]
     _char_run_complete_location = BrotatoLocationBase(name=f"Run Complete ({char})")
-    _char_run_complete_event = BrotatoLocationBase(name=f"Run Complete ({char}) Event", is_event=True)
     _char_specific_wave_complete_locs += _char_wave_complete_locations
     _char_specific_run_complete_locs.append(_char_run_complete_location)
-    _char_specific_run_complete_events.append(_char_run_complete_event)
 
     character_specific_locations[char] = {
         # **{c.name: c.id for c in _char_wave_complete_locations}, # We want to manually add these later
         _char_run_complete_location.name: _char_run_complete_location.id,
-        _char_run_complete_event.name: _char_run_complete_event.id,
     }
 
 _shop_item_locs: list[BrotatoLocationBase] = []
@@ -87,7 +83,6 @@ location_table: list[BrotatoLocationBase] = [
     # *_char_generic_run_complete_events,
     *_char_specific_wave_complete_locs,
     *_char_specific_run_complete_locs,
-    *_char_specific_run_complete_events,
     *_shop_item_locs,
     *_normal_item_drop_locs,
     *_legendary_item_drop_locs,
@@ -100,7 +95,6 @@ location_name_groups: dict[str, set[str]] = {
     # "Run Win Any Character Events": set(c.name for c in _char_generic_run_complete_events),
     "Wave Complete Specific Character": set(c.name for c in _char_specific_wave_complete_locs),
     "Run Win Specific Character": set(c.name for c in _char_specific_run_complete_locs),
-    "Run Win Specific Character Events": set(c.name for c in _char_specific_run_complete_events),
     "Normal Crate Drops": set(c.name for c in _normal_item_drop_locs),
     "Legendary Crate Drops": set(c.name for c in _legendary_item_drop_locs),
     "Shop Items": set(c.name for c in _shop_item_locs),

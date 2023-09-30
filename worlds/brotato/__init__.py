@@ -8,6 +8,7 @@ from .Constants import DEFAULT_CHARACTERS, CHARACTERS, NUM_WAVES, UNLOCKABLE_CHA
 from .Items import BrotatoItem, filler_items, ItemName, item_name_groups, item_name_to_id, item_table
 from .Locations import location_name_to_id, location_name_groups
 from .Regions import create_regions
+from .Rules import BrotatoLogic
 
 # from .Rules import set_rules
 
@@ -55,6 +56,7 @@ class BrotatoWorld(World):
 
     def __init__(self, world: MultiWorld, player: int):
         super().__init__(world, player)
+        1 == 1
 
     def create_item(self, name: str | ItemName) -> BrotatoItem:
         if isinstance(name, ItemName):
@@ -66,8 +68,10 @@ class BrotatoWorld(World):
         # Ignore 0 value, but choosing a different start gives the wrong wave results
         self.waves_with_drops = list(range(0, NUM_WAVES, waves_per_drop))[1:]
 
-    # def set_rules(self):
-    #     set_rules(self)
+    def set_rules(self):
+        self.multiworld.completion_condition[self.player] = lambda state: BrotatoLogic._brotato_has_run_wins(
+            state, self.player, count=self.multiworld.num_victories[self.player]
+        )
 
     def create_regions(self) -> None:
         create_regions(self.multiworld, self.player)
@@ -75,12 +79,10 @@ class BrotatoWorld(World):
     def create_items(self):
         item_names: list[ItemName] = []
 
-        self.multiworld.start_inventory[self.player]
         for dc in DEFAULT_CHARACTERS:
             self.multiworld.push_precollected(self.create_item(dc))
 
         item_names += [c for c in item_name_groups["Characters"] if c in UNLOCKABLE_CHARACTERS]
-        # item_names += [ItemName.RUN_COMPLETE] * len(CHARACTERS)
 
         # Add an item to receive for each crate drop location, as backfill
         for _ in range(self.multiworld.num_common_crate_drops[self.player]):
@@ -108,16 +110,13 @@ class BrotatoWorld(World):
         self.multiworld.itempool += itempool
         self.multiworld.itempool
 
-    def generate_basic(self):
-        # Place "Run Won" items at the Run Won event locations
-        for loc in location_name_groups["Run Win Specific Character Events"]:
+        # Place "Run Complete" items at the Run Win event locations
+        for loc in self.location_name_groups["Run Win Specific Character"]:
             item = self.multiworld.create_item(ItemName.RUN_COMPLETE, self.player)
             self.multiworld.get_location(loc, self.player).place_locked_item(item)
 
-        # Set victory condition (we're ignoring the set_rules one until we add the generic/specific win toggle back)
-        self.multiworld.completion_condition[self.player] = lambda state: state.has(
-            ItemName.RUN_COMPLETE.value, self.player, count=self.multiworld.num_victories[self.player]
-        )
+    def generate_basic(self):
+        pass
 
     def get_filler_item_name(self):
         return self.multiworld.random.choice(self._filler_items)

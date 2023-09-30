@@ -1,39 +1,18 @@
-from functools import partial
-from typing import TYPE_CHECKING, Callable
+from typing import Protocol
 
-from BaseClasses import CollectionState
+from ..AutoWorld import LogicMixin
 
-from .Constants import CHARACTERS
 from .Items import ItemName
 
-# from worlds.generic.Rules import set_rule
 
-if TYPE_CHECKING:
-    from . import BrotatoWorld
-
-
-def _get_completion_condition(world: "BrotatoWorld") -> Callable[[CollectionState], bool]:
-    num_required_wins = world.runs_required[world.player]
-    if world.brotato_win_option[world.player] == "any":
-        return partial(_completion_condition_any_character, num_required_wins, world.player)
-    else:
-        return partial(_completion_condition_specific_character, num_required_wins, world.player)
+class HasItem(Protocol):
+    def has(self, item: str, player: int, count: int = 1) -> bool:
+        ...
 
 
-def _completion_condition_any_character(num_required_wins: int, player: int, state: CollectionState) -> bool:
-    return state.has(ItemName.RUN_COMPLETE.value, player, count=num_required_wins)
+class BrotatoLogic(LogicMixin):
+    def _brotato_has_character(self: HasItem, player: int, character: str) -> bool:
+        return self.has(character, player)
 
-
-def _completion_condition_specific_character(num_required_wins: int, player: int, state: CollectionState) -> bool:
-    won_runs = 0
-    for character in CHARACTERS:
-        if state.has(f"Run Complete ({character})", player):
-            won_runs += 1
-    return won_runs >= num_required_wins
-
-
-def set_rules(world: "BrotatoWorld"):
-    world.multiworld.completion_condition[world.player] = _get_completion_condition(world)
-    # player = brotato_world.player
-    # world = brotato_world.multiworld
-    pass
+    def _brotato_has_run_wins(self: HasItem, player: int, count: int) -> bool:
+        return self.has(ItemName.RUN_COMPLETE.value, player, count=count)
