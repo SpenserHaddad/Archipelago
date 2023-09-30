@@ -42,7 +42,7 @@ class BrotatoLocationBase:
         return BrotatoLocation(player, name=self.name, address=self.id)
 
 
-_wave_count = range(NUM_WAVES)
+_wave_count = range(1, NUM_WAVES + 1)
 
 _char_specific_wave_complete_locs: list[BrotatoLocationBase] = []
 _char_specific_run_complete_locs: list[BrotatoLocationBase] = []
