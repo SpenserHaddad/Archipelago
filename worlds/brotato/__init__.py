@@ -1,5 +1,5 @@
 import logging
-from typing import Sequence
+from typing import Any, Sequence
 
 from BaseClasses import MultiWorld, Tutorial
 from worlds.AutoWorld import WebWorld, World
@@ -56,26 +56,30 @@ class BrotatoWorld(World):
     def __init__(self, world: MultiWorld, player: int):
         super().__init__(world, player)
 
+    def _get_option_value(self, option: str) -> Any:
+        return getattr(self.multiworld, option)[self.player]
+
     def create_item(self, name: str | ItemName) -> BrotatoItem:
         if isinstance(name, ItemName):
             name = name.value
         return item_table[self.item_name_to_id[name]].to_item(self.player)
 
     def generate_early(self):
-        waves_per_drop = self.multiworld.waves_per_drop[self.player]
+        waves_per_drop = self._get_option_value("waves_per_drop")
         # Ignore 0 value, but choosing a different start gives the wrong wave results
         self.waves_with_drops = list(range(0, NUM_WAVES + 1, waves_per_drop))[1:]
 
     def set_rules(self):
+        num_required_victories = getattr(self.multiworld, "num_victories")[self.player]
         self.multiworld.completion_condition[self.player] = lambda state: BrotatoLogic._brotato_has_run_wins(
-            state, self.player, count=self.multiworld.num_victories[self.player]
+            state, self.player, count=num_required_victories
         )
 
     def create_regions(self) -> None:
         create_regions(self.multiworld, self.player, self.waves_with_drops)
 
     def create_items(self):
-        item_names: list[ItemName] = []
+        item_names: list[ItemName | str] = []
 
         for dc in DEFAULT_CHARACTERS:
             self.multiworld.push_precollected(self.create_item(dc))
@@ -83,34 +87,36 @@ class BrotatoWorld(World):
         item_names += [c for c in item_name_groups["Characters"] if c in UNLOCKABLE_CHARACTERS]
 
         # Add an item to receive for each crate drop location, as backfill
-        for _ in range(self.multiworld.num_common_crate_drops[self.player]):
+        num_common_crate_drops = self._get_option_value("num_common_crate_drops")
+        for _ in range(num_common_crate_drops):
             # TODO: Can be any item rarity, but need to choose a ratio. Check wiki for rates?
             item_names.append(ItemName.COMMON_ITEM)
 
-        for _ in range(self.multiworld.num_legendary_crate_drops[self.player]):
+        num_legendary_crate_drops = self._get_option_value("num_legendary_crate_drops")
+        for _ in range(num_legendary_crate_drops):
             item_names.append(ItemName.LEGENDARY_ITEM)
 
-        for _ in range(self.multiworld.num_shop_items[self.player]):
+        num_shop_items = self._get_option_value("num_shop_items")
+        for _ in range(num_shop_items):
             pass
 
         itempool = [self.create_item(item_name) for item_name in item_names]
 
         total_locations = (
-            self.multiworld.num_common_crate_drops[self.player]
-            + self.multiworld.num_legendary_crate_drops[self.player]
+            num_common_crate_drops
+            + num_legendary_crate_drops
             + (len(self.waves_with_drops) * len(CHARACTERS))
-            + len(CHARACTERS)  # Number of run wins
+            + len(CHARACTERS)  # Number of run winsex
             # + self.multiworld.num_shop_items[self.player] # Not implemented yet
         )
         num_filler_items = total_locations - len(itempool)
         itempool += [self.create_filler() for _ in range(num_filler_items)]
 
         self.multiworld.itempool += itempool
-        self.multiworld.itempool
 
         # Place "Run Complete" items at the Run Win event locations
         for loc in self.location_name_groups["Run Win Specific Character"]:
-            item = self.multiworld.create_item(ItemName.RUN_COMPLETE, self.player)
+            item = self.create_item(ItemName.RUN_COMPLETE)
             self.multiworld.get_location(loc, self.player).place_locked_item(item)
 
     def generate_basic(self):
