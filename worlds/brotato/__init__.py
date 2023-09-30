@@ -70,7 +70,7 @@ class BrotatoWorld(World):
         self.waves_with_drops = list(range(0, NUM_WAVES + 1, waves_per_drop))[1:]
 
     def set_rules(self):
-        num_required_victories = getattr(self.multiworld, "num_victories")[self.player]
+        num_required_victories = self._get_option_value("num_victories")
         self.multiworld.completion_condition[self.player] = lambda state: BrotatoLogic._brotato_has_run_wins(
             state, self.player, count=num_required_victories
         )
@@ -124,3 +124,11 @@ class BrotatoWorld(World):
 
     def get_filler_item_name(self):
         return self.multiworld.random.choice(self._filler_items)
+
+    def fill_slot_data(self) -> dict[str, Any]:
+        return {
+            "waves_with_drops": self.waves_with_drops,
+            "num_wins_needed": self._get_option_value("num_victories"),
+            "num_consumables": self._get_option_value("num_common_crate_drops"),
+            "num_legendary_consumables": self._get_option_value("num_legendary_crate_drops"),
+        }
