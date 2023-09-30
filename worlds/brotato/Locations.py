@@ -11,7 +11,6 @@ from .Constants import (
     CHARACTERS,
     MAX_LEGENDARY_CRATE_DROPS,
     MAX_NORMAL_CRATE_DROPS,
-    MAX_REQUIRED_RUN_WINS,
     MAX_SHOP_LOCATIONS_PER_TIER,
     NUM_WAVES,
 )
@@ -44,7 +43,6 @@ class BrotatoLocationBase:
 
 
 _wave_count = range(NUM_WAVES)
-_run_count = range(MAX_REQUIRED_RUN_WINS)
 
 _char_specific_wave_complete_locs: list[BrotatoLocationBase] = []
 _char_specific_run_complete_locs: list[BrotatoLocationBase] = []
