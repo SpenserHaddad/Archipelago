@@ -27,7 +27,6 @@ def create_regions(world: MultiWorld, player: int, waves_with_drops: Sequence[in
     world.regions += [menu_region, crate_drop_region]
 
     character_regions = []
-    breakpoint()
     for character in CHARACTERS:
         char_in_game_region = Region(f"In-Game ({character})", player, world)
         char_in_game_locations = character_specific_locations[character]
