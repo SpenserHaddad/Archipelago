@@ -1,17 +1,16 @@
 from __future__ import annotations
+from typing import Sequence
 
 from BaseClasses import MultiWorld, Region
 
-from .Constants import CHARACTERS, NUM_WAVES
+from .Constants import CHARACTERS
 from .Locations import BrotatoLocation, character_specific_locations, location_name_to_id
 from .Rules import BrotatoLogic
 
 
-def create_regions(world: MultiWorld, player: int):
+def create_regions(world: MultiWorld, player: int, waves_with_drops: Sequence[int]):
     menu_region = Region("Menu", player, world)
     crate_drop_region = Region("Loot Crates", player, world)
-
-    world
 
     crate_drop_locs_name_to_id = {}
     for i in range(getattr(world, "num_common_crate_drops")[player]):
@@ -28,7 +27,7 @@ def create_regions(world: MultiWorld, player: int):
     world.regions += [menu_region, crate_drop_region]
 
     character_regions = []
-    waves_with_drops = list(range(0, NUM_WAVES, getattr(world, "waves_per_drop")[player]))[1:]
+    breakpoint()
     for character in CHARACTERS:
         char_in_game_region = Region(f"In-Game ({character})", player, world)
         char_in_game_locations = character_specific_locations[character]

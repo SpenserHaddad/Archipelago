@@ -1,4 +1,5 @@
 import logging
+from typing import Sequence
 
 from BaseClasses import MultiWorld, Tutorial
 from worlds.AutoWorld import WebWorld, World
@@ -49,12 +50,11 @@ class BrotatoWorld(World):
     location_name_to_id = location_name_to_id
     location_name_groups = location_name_groups
 
-    # Which waves will count as locations, derived from player options in generate_early
-    waves_with_drops: int
+    waves_with_drops: Sequence[int]
+    """Which waves will count as locations, derived from player options in generate_early"""
 
     def __init__(self, world: MultiWorld, player: int):
         super().__init__(world, player)
-        1 == 1
 
     def create_item(self, name: str | ItemName) -> BrotatoItem:
         if isinstance(name, ItemName):
@@ -64,7 +64,7 @@ class BrotatoWorld(World):
     def generate_early(self):
         waves_per_drop = self.multiworld.waves_per_drop[self.player]
         # Ignore 0 value, but choosing a different start gives the wrong wave results
-        self.waves_with_drops = list(range(0, NUM_WAVES, waves_per_drop))[1:]
+        self.waves_with_drops = list(range(0, NUM_WAVES + 1, waves_per_drop))[1:]
 
     def set_rules(self):
         self.multiworld.completion_condition[self.player] = lambda state: BrotatoLogic._brotato_has_run_wins(
@@ -72,7 +72,7 @@ class BrotatoWorld(World):
         )
 
     def create_regions(self) -> None:
-        create_regions(self.multiworld, self.player)
+        create_regions(self.multiworld, self.player, self.waves_with_drops)
 
     def create_items(self):
         item_names: list[ItemName] = []
