@@ -50,7 +50,7 @@ class BrotatoWorld(World):
     location_name_to_id = location_name_to_id
     location_name_groups = location_name_groups
 
-    waves_with_drops: Sequence[int]
+    waves_with_checks: Sequence[int]
     """Which waves will count as locations, derived from player options in generate_early"""
 
     def __init__(self, world: MultiWorld, player: int):
@@ -67,7 +67,7 @@ class BrotatoWorld(World):
     def generate_early(self):
         waves_per_drop = self._get_option_value("waves_per_drop")
         # Ignore 0 value, but choosing a different start gives the wrong wave results
-        self.waves_with_drops = list(range(0, NUM_WAVES + 1, waves_per_drop))[1:]
+        self.waves_with_checks = list(range(0, NUM_WAVES + 1, waves_per_drop))[1:]
 
     def set_rules(self):
         num_required_victories = self._get_option_value("num_victories")
@@ -76,7 +76,7 @@ class BrotatoWorld(World):
         )
 
     def create_regions(self) -> None:
-        create_regions(self.multiworld, self.player, self.waves_with_drops)
+        create_regions(self.multiworld, self.player, self.waves_with_checks)
 
     def create_items(self):
         item_names: list[ItemName | str] = []
@@ -105,8 +105,7 @@ class BrotatoWorld(World):
         total_locations = (
             num_common_crate_drops
             + num_legendary_crate_drops
-            + (len(self.waves_with_drops) * len(CHARACTERS))
-            + len(CHARACTERS)  # Number of run winsex
+            + (len(self.waves_with_checks) * len(CHARACTERS))
             # + self.multiworld.num_shop_items[self.player] # Not implemented yet
         )
         num_filler_items = total_locations - len(itempool)
@@ -127,8 +126,8 @@ class BrotatoWorld(World):
 
     def fill_slot_data(self) -> dict[str, Any]:
         return {
-            "waves_with_drops": self.waves_with_drops,
-            "num_wins_needed": self._get_option_value("num_victories"),
-            "num_consumables": self._get_option_value("num_common_crate_drops"),
-            "num_legendary_consumables": self._get_option_value("num_legendary_crate_drops"),
+            "waves_with_checks": self.waves_with_checks,
+            "num_wins_needed": int(self._get_option_value("num_victories")),
+            "num_consumables": int(self._get_option_value("num_common_crate_drops")),
+            "num_legendary_consumables": int(self._get_option_value("num_legendary_crate_drops")),
         }
