@@ -35,7 +35,7 @@ CHARACTERS = {
     "Farmer",
     "Ghost",
     "Speedy",
-    "Entrepeneur",
+    "Entrepreneur",
     "Engineer",
     "Explorer",
     "Doctor",

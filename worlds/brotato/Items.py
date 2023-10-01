@@ -66,7 +66,7 @@ class ItemName(Enum):
     CHARACTER_FARMER = "Farmer"
     CHARACTER_GHOST = "Ghost"
     CHARACTER_SPEEDY = "Speedy"
-    CHARACTER_ENTREPENEUR = "Entrepeneur"
+    CHARACTER_ENTREPRENEUR = "Entrepreneur"
     CHARACTER_ENGINEER = "Engineer"
     CHARACTER_EXPLORER = "Explorer"
     CHARACTER_DOCTOR = "Doctor"
