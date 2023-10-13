@@ -34,6 +34,11 @@ class ItemName(Enum):
     UNCOMMON_ITEM = "Uncommon Item"
     RARE_ITEM = "Rare Item"
     LEGENDARY_ITEM = "Legendary Item"
+    COMMON_UPGRADE = "Common Upgrade"
+    UNCOMMON_UPGRADE = "Uncommon Upgrade"
+    RARE_UPGRADE = "Rare Upgrade"
+    LEGENDARY_UPGRADE = "Legendary Upgrade"
+    SHOP_SLOT = "Progressive Shop Slot"
     XP_5 = "XP (5)"
     XP_10 = "XP (10)"
     XP_25 = "XP (25)"
@@ -45,7 +50,7 @@ class ItemName(Enum):
     GOLD_50 = "Gold (50)"
     GOLD_100 = "Gold (100)"
     GOLD_200 = "Gold (200)"
-    RUN_COMPLETE = "Run Complete"
+    RUN_COMPLETE = "Run Won"
     CHARACTER_WELL_ROUNDED = "Well Rounded"
     CHARACTER_BRAWLER = "Brawler"
     CHARACTER_CRAZY = "Crazy"
@@ -99,6 +104,11 @@ _items: list[BrotatoItemBase] = [
     BrotatoItemBase(name=ItemName.UNCOMMON_ITEM, classification=ItemClassification.useful),
     BrotatoItemBase(name=ItemName.RARE_ITEM, classification=ItemClassification.useful),
     BrotatoItemBase(name=ItemName.LEGENDARY_ITEM, classification=ItemClassification.useful),
+    BrotatoItemBase(name=ItemName.COMMON_UPGRADE, classification=ItemClassification.useful),
+    BrotatoItemBase(name=ItemName.UNCOMMON_UPGRADE, classification=ItemClassification.useful),
+    BrotatoItemBase(name=ItemName.RARE_UPGRADE, classification=ItemClassification.useful),
+    BrotatoItemBase(name=ItemName.LEGENDARY_UPGRADE, classification=ItemClassification.useful),
+    BrotatoItemBase(name=ItemName.SHOP_SLOT, classification=ItemClassification.useful),
     BrotatoItemBase(name=ItemName.XP_5, classification=ItemClassification.filler),
     BrotatoItemBase(name=ItemName.XP_10, classification=ItemClassification.filler),
     BrotatoItemBase(name=ItemName.XP_25, classification=ItemClassification.filler),
@@ -126,6 +136,13 @@ item_name_groups = {
         ItemName.RARE_ITEM.value,
         ItemName.LEGENDARY_ITEM.value,
     },
+    "Upgrades": {
+        ItemName.COMMON_UPGRADE.value,
+        ItemName.UNCOMMON_UPGRADE.value,
+        ItemName.RARE_UPGRADE.value,
+        ItemName.LEGENDARY_UPGRADE.value,
+    },
+    "Shop": {ItemName.SHOP_SLOT.value},
     "Gold and XP": {
         ItemName.XP_5.value,
         ItemName.XP_10.value,

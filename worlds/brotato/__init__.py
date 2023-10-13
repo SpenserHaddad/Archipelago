@@ -5,9 +5,16 @@ from BaseClasses import MultiWorld, Tutorial
 from worlds.AutoWorld import WebWorld, World
 
 from . import Options
-from .Constants import DEFAULT_CHARACTERS, CHARACTERS, NUM_WAVES, UNLOCKABLE_CHARACTERS
-from .Items import BrotatoItem, filler_items, ItemName, item_name_groups, item_name_to_id, item_table
-from .Locations import location_name_to_id, location_name_groups
+from .Constants import CHARACTERS, DEFAULT_CHARACTERS, MAX_SHOP_SLOTS, NUM_WAVES, UNLOCKABLE_CHARACTERS
+from .Items import (
+    BrotatoItem,
+    ItemName,
+    filler_items,
+    item_name_groups,
+    item_name_to_id,
+    item_table,
+)
+from .Locations import location_name_groups, location_name_to_id
 from .Regions import create_regions
 from .Rules import BrotatoLogic
 
@@ -46,6 +53,7 @@ class BrotatoWorld(World):
     item_name_groups = item_name_groups
 
     _filler_items = filler_items
+    _starting_characters: list[str]
 
     location_name_to_id = location_name_to_id
     location_name_groups = location_name_groups
@@ -68,6 +76,12 @@ class BrotatoWorld(World):
         waves_per_drop = self._get_option_value("waves_per_drop")
         # Ignore 0 value, but choosing a different start gives the wrong wave results
         self.waves_with_checks = list(range(0, NUM_WAVES + 1, waves_per_drop))[1:]
+        character_option = self._get_option_value("starting_characters")
+        if character_option == 0:  # Default
+            self._starting_characters = DEFAULT_CHARACTERS
+        else:
+            num_starting_characters = self._get_option_value("num_starting_characters")
+            self._starting_characters = self.multiworld.random.sample(CHARACTERS, num_starting_characters)
 
     def set_rules(self):
         num_required_victories = self._get_option_value("num_victories")
@@ -81,10 +95,10 @@ class BrotatoWorld(World):
     def create_items(self):
         item_names: list[ItemName | str] = []
 
-        for dc in DEFAULT_CHARACTERS:
-            self.multiworld.push_precollected(self.create_item(dc))
+        for c in self._starting_characters:
+            self.multiworld.push_precollected(self.create_item(c))
 
-        item_names += [c for c in item_name_groups["Characters"] if c in UNLOCKABLE_CHARACTERS]
+        item_names += [c for c in item_name_groups["Characters"] if c not in self._starting_characters]
 
         # Add an item to receive for each crate drop location, as backfill
         num_common_crate_drops = self._get_option_value("num_common_crate_drops")
@@ -96,24 +110,37 @@ class BrotatoWorld(World):
         for _ in range(num_legendary_crate_drops):
             item_names.append(ItemName.LEGENDARY_ITEM)
 
-        num_shop_items = self._get_option_value("num_shop_items")
-        for _ in range(num_shop_items):
-            pass
+        num_common_upgrades = self._get_option_value("num_common_upgrades")
+        item_names += [ItemName.COMMON_UPGRADE] * num_common_upgrades
+
+        num_uncommon_upgrades = self._get_option_value("num_uncommon_upgrades")
+        item_names += [ItemName.UNCOMMON_UPGRADE] * num_uncommon_upgrades
+
+        num_rare_upgrades = self._get_option_value("num_rare_upgrades")
+        item_names += [ItemName.RARE_UPGRADE] * num_rare_upgrades
+
+        num_legendary_upgrades = self._get_option_value("num_legendary_upgrades")
+        item_names += [ItemName.LEGENDARY_UPGRADE] * num_legendary_upgrades
+
+        num_starting_shop_slots = self._get_option_value("num_starting_shop_slots")
+        num_shop_slot_items = max(MAX_SHOP_SLOTS - num_starting_shop_slots, 0)
+        item_names += [ItemName.SHOP_SLOT] * num_shop_slot_items
+
+        # num_shop_items = self._get_option_value("num_shop_items")
+        # for _ in range(num_shop_items):
+        #     pass
 
         itempool = [self.create_item(item_name) for item_name in item_names]
 
         total_locations = (
-            num_common_crate_drops
-            + num_legendary_crate_drops
-            + (len(self.waves_with_checks) * len(CHARACTERS))
-            # + self.multiworld.num_shop_items[self.player] # Not implemented yet
+            num_common_crate_drops + num_legendary_crate_drops + (len(self.waves_with_checks) * len(CHARACTERS))
         )
         num_filler_items = total_locations - len(itempool)
         itempool += [self.create_filler() for _ in range(num_filler_items)]
 
         self.multiworld.itempool += itempool
 
-        # Place "Run Complete" items at the Run Win event locations
+        # Place "Run Won" items at the Run Win event locations
         for loc in self.location_name_groups["Run Win Specific Character"]:
             item = self.create_item(ItemName.RUN_COMPLETE)
             self.multiworld.get_location(loc, self.player).place_locked_item(item)
@@ -129,5 +156,6 @@ class BrotatoWorld(World):
             "waves_with_checks": self.waves_with_checks,
             "num_wins_needed": int(self._get_option_value("num_victories")),
             "num_consumables": int(self._get_option_value("num_common_crate_drops")),
+            "num_starting_shop_slots": int(self._get_option_value("num_starting_shop_slots")),
             "num_legendary_consumables": int(self._get_option_value("num_legendary_crate_drops")),
         }
