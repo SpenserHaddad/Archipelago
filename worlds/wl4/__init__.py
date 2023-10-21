@@ -17,18 +17,27 @@ from .types import ItemType, Passage
 
 def launch_client(*args):
     from .client import launch
-    launch_subprocess(launch, name='WL4Client')
+
+    launch_subprocess(launch, name="WL4Client")
 
 
-components.append(Component('Wario Land 4 Client', 'WL4Client', component_type=Type.CLIENT,
-                            func=launch_client, file_identifier=SuffixIdentifier('.apwl4'))),
+components.append(
+    Component(
+        "Wario Land 4 Client",
+        "WL4Client",
+        component_type=Type.CLIENT,
+        func=launch_client,
+        file_identifier=SuffixIdentifier(".apwl4"),
+    )
+),
 
 
 class WL4Settings(settings.Group):
     class RomFile(settings.UserFilePath):
-        '''File name of the Wario Land 4 NA/EU ROM'''
-        description = 'Wario Land 4 (U/E) ROM File'
-        copy_to = 'Wario Land 4 (UE) [!].gba'
+        """File name of the Wario Land 4 NA/EU ROM"""
+
+        description = "Wario Land 4 (U/E) ROM File"
+        copy_to = "Wario Land 4 (UE) [!].gba"
         md5s = [WL4DeltaPatch.hash]
 
     rom_file: RomFile = RomFile(RomFile.copy_to)
@@ -36,36 +45,37 @@ class WL4Settings(settings.Group):
 
 
 class WL4Web(WebWorld):
-    theme = 'jungle'
+    theme = "jungle"
 
     setup_en = Tutorial(
-        'Multiworld Setup Guide',
-        'A guide to setting up the Wario Land 4 randomizer connected to an Archipelago Multiworld.',
-        'English',
-        'setup_en.md',
-        'setup/en',
-        ['lil David']
+        "Multiworld Setup Guide",
+        "A guide to setting up the Wario Land 4 randomizer connected to an Archipelago Multiworld.",
+        "English",
+        "setup_en.md",
+        "setup/en",
+        ["lil David"],
     )
 
     tutorials = [setup_en]
 
 
 class WL4World(World):
-    '''
+    """
     A golden pyramid has been discovered deep in the jungle, and Wario has set
     out to rob it. But to make off with its legendary treasure, he has to first
     defeat the five passage bosses and the pyramid's evil ruler, the Golden Diva.
-    '''
+    """
 
-    game: str = 'Wario Land 4'
+    game: str = "Wario Land 4"
     option_definitions = wl4_options
     settings: ClassVar[WL4Settings]
     topology_present = False
 
     data_version = 0
 
-    item_name_to_id = {item_name: ap_id_from_wl4_data(data) for item_name, data in item_table.items()
-                       if data[1] is not None}
+    item_name_to_id = {
+        item_name: ap_id_from_wl4_data(data) for item_name, data in item_table.items() if data[1] is not None
+    }
     location_name_to_id = location_name_to_id
 
     web = WL4Web()
@@ -80,14 +90,14 @@ class WL4World(World):
         create_regions(self.multiworld, self.player, location_table)
         connect_regions(self.multiworld, self.player)
 
-        passages = ('Entry', 'Emerald', 'Ruby', 'Topaz', 'Sapphire')
+        passages = ("Entry", "Emerald", "Ruby", "Topaz", "Sapphire")
         for passage in passages:
-            location = self.multiworld.get_region(f'{passage} Passage Boss', self.player).locations[0]
-            location.place_locked_item(self.create_item(f'{passage} Passage Clear'))
+            location = self.multiworld.get_region(f"{passage} Passage Boss", self.player).locations[0]
+            location.place_locked_item(self.create_item(f"{passage} Passage Clear"))
             location.show_in_spoiler = False
 
-        golden_diva = self.multiworld.get_location('Golden Diva', self.player)
-        golden_diva.place_locked_item(self.create_item('Escape the Pyramid'))
+        golden_diva = self.multiworld.get_location("Golden Diva", self.player)
+        golden_diva.place_locked_item(self.create_item("Escape the Pyramid"))
         golden_diva.show_in_spoiler = False
 
     def create_items(self):
@@ -117,7 +127,7 @@ class WL4World(World):
             itempool.append(self.create_item(name))
 
         for _ in range(full_health_items):
-            itempool.append(self.create_item('Full Health Item'))
+            itempool.append(self.create_item("Full Health Item"))
 
         junk_count = total_required_locations - len(itempool)
         junk_item_pool = tuple(filter_item_names(type=ItemType.ITEM))
@@ -137,15 +147,15 @@ class WL4World(World):
             rom = LocalRom(get_base_rom_path())
             patch_rom(rom, self.multiworld, self.player)
 
-            rompath = output_path / f'{world.get_out_file_name_base(player)}.gba'
+            rompath = output_path / f"{world.get_out_file_name_base(player)}.gba"
             rom.write_to_file(rompath)
             self.rom_name = rom.name
 
             patch = WL4DeltaPatch(
                 rompath.with_suffix(WL4DeltaPatch.patch_file_ending),
                 player=player,
-                player_name = world.player_name[player],
-                patched_path = rompath
+                player_name=world.player_name[player],
+                patched_path=rompath,
             )
             patch.write()
         finally:
@@ -158,5 +168,4 @@ class WL4World(World):
         return created_item
 
     def set_rules(self):
-        self.multiworld.completion_condition[self.player] = (
-            lambda state: state.has('Escape the Pyramid', self.player))
+        self.multiworld.completion_condition[self.player] = lambda state: state.has("Escape the Pyramid", self.player)
