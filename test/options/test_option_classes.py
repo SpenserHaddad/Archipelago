@@ -1,6 +1,7 @@
 import unittest
+from typing import Any
 
-from Options import Choice, DefaultOnToggle, Toggle
+from Options import Choice, DefaultOnToggle, Option, OptionDict, OptionError, OptionList, OptionSet, Toggle
 
 
 class TestNumericOptions(unittest.TestCase):
@@ -65,3 +66,35 @@ class TestNumericOptions(unittest.TestCase):
             self.assertTrue(toggle_string)
             self.assertTrue(toggle_int)
             self.assertTrue(toggle_alias)
+
+
+class TestVerifyKeys(unittest.TestCase):
+    def test_invalid_key_raises_option_error(self) -> None:
+        class TestOptionDict(OptionDict):
+            default = {"A": 1}
+            display_name = "Test Option Dict"
+            valid_keys = ("A", "r", "c", "h", "i")
+
+        class TestOptionList(OptionList):
+            default = ("A", "A", "r", "r")
+            display_name = "Test Option List"
+            valid_keys = ("A", "r", "c", "h", "i")
+
+        class TestOptionSet(OptionSet):
+            default = frozenset("A")
+            display_name = "Test Option Set"
+            valid_keys = ("A", "r", "c", "h", "i")
+
+        sub_test_info: list[tuple[type[Option], Any, str | None]] = [
+            (TestOptionDict, {"A": 1, "r": 10, "B": 4, "K": 5}, None),
+            (TestOptionList, ["A", "A", "B", "K", "r", "i"], "A,A,r,B,i,K,c,h,i"),
+            (TestOptionSet, ("A", "r", "c", "B", "K"), "A,r,c,h,B,K"),
+        ]
+
+        for verify_keys_cls, from_any_arg, from_text_arg in sub_test_info:
+            with self.subTest(cls=verify_keys_cls.__name__):
+                # "B" or "K" should trigger the exception.
+                self.assertRaises(OptionError, verify_keys_cls.from_any, from_any_arg)
+                # OptionDict has no from_text option, so check if the method exists on the class first
+                if (from_text := getattr(verify_keys_cls, "from_text", None)) is not None:
+                    self.assertRaises(OptionError, from_text, from_text_arg)
