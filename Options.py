@@ -773,9 +773,32 @@ class FreezeValidKeys(AssembleOptions):
     def __new__(mcs, name, bases, attrs):
         assert not "_valid_keys" in attrs, "'_valid_keys' gets set by FreezeValidKeys, define 'valid_keys' instead."
         if "valid_keys" in attrs:
-            attrs["_valid_keys"] = frozenset(attrs["valid_keys"])
-        return super(FreezeValidKeys, mcs).__new__(mcs, name, bases, attrs)
+            # "random" key is special, it should always be included. (There must be a better way to handle this)
+            attrs["_valid_keys"] = frozenset([*attrs["valid_keys"], "random"])
 
+        # Replace existing from_* methods with a shim which also calls verify_keys(). It's not pretty, but it's ensures
+        # the verification is called every time the class is created without them needing to remember.
+        if "from_text" in attrs:
+            attrs["_from_text"] = attrs["from_text"]
+
+            def from_text(cls, text: str):
+                obj = getattr(cls, "_from_text")(text)
+                obj.verify_keys()
+                return obj
+
+            attrs["from_text"] = classmethod(from_text)
+
+        if "from_any" in attrs:
+            attrs["_from_any"] = attrs["from_any"]
+
+            def from_any(cls, data: typing.Any):
+                obj = getattr(cls, "_from_any")(data)
+                obj.verify_keys()
+                return obj
+
+            attrs["from_any"] = classmethod(from_any)
+
+        return super(FreezeValidKeys, mcs).__new__(mcs, name, bases, attrs)
 
 class VerifyKeys(metaclass=FreezeValidKeys):
     valid_keys: typing.Iterable = []
