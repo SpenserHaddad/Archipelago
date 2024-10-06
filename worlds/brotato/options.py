@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 
-from Options import Choice, PerGameCommonOptions, Range, TextChoice
+from Options import Choice, OptionSet, PerGameCommonOptions, Range, TextChoice
 
 from .constants import (
+    CHARACTERS,
     MAX_COMMON_UPGRADES,
     MAX_LEGENDARY_CRATE_DROP_GROUPS,
     MAX_LEGENDARY_CRATE_DROPS,
@@ -33,7 +34,7 @@ class NumberRequiredWins(Range):
 class StartingCharacters(TextChoice):
     """Determines your set of starting characters.
 
-    * Default: Start with Well Rounded, Brawler, Crazy, Ranger and Mage.
+    * Default: Start with Well Rounded, Brawler, Crazy, Ranger and Mage (unless they aren't in "Include Characters").
     * Shuffle: Start with a random selection of characters.
     """
 
@@ -52,6 +53,18 @@ class NumberStartingCharacters(Range):
 
     default = 5
     display_name = "Number of Starting Characters"
+
+
+class IncludeCharacters(OptionSet):
+    """Which characters to include for checks.
+
+    Characters not listed here will not be available to play. There will be no item to unlock them, and there will be
+    no run or wave complete checks associated with them.
+    """
+
+    default = frozenset(CHARACTERS)
+    display_name = "Include Characters"
+    valid_keys = CHARACTERS
 
 
 class WavesPerCheck(Range):
@@ -276,10 +289,48 @@ class StartingShopSlots(Range):
     display_name: str = "Starting Shop Slots"
 
 
+class StartingShopLockButtonsMode(Choice):
+    """Add the "Lock" buttons in the shop as items.
+
+    Missing buttons will be disabled until they are received as items.
+
+    The button and shop slot are different items, so it's possible to receive the button without the shop.
+
+    * All: Start with all lock buttons enabled (vanilla behavior).
+    * None: Start with no lock buttons enabled at start.
+    * Match shop slots: Start with the same number of lock buttons as shop slots.
+    * Custom: Choose the number to start with using "Number of Lock Buttons".
+    """
+
+    option_all = 0
+    option_none = 1
+    option_match_shop_slots = 2
+    option_custom = 3
+
+    default = 2
+    display_name = "Starting Shop Lock Buttons"
+
+
+class NumberStartingShopLockButtons(Range):
+    """The number of "Lock" buttons in the shop to start with.
+
+    Missing buttons will not be usable until they are received as items.
+
+    The button and shop slot are different items, so it's possible to receive the button without the shop.
+    """
+
+    range_start = 0
+    range_end = MAX_SHOP_SLOTS
+
+    default = 0
+    display_name = "Number of Lock Buttons"
+
+
 @dataclass
 class BrotatoOptions(PerGameCommonOptions):
     num_victories: NumberRequiredWins
     starting_characters: StartingCharacters
+    include_characters: IncludeCharacters
     num_starting_characters: NumberStartingCharacters
     waves_per_drop: WavesPerCheck
     num_common_crate_drops: NumberCommonCrateDropLocations
@@ -298,3 +349,5 @@ class BrotatoOptions(PerGameCommonOptions):
     num_rare_upgrades: NumberRareUpgrades
     num_legendary_upgrades: NumberLegendaryUpgrades
     num_starting_shop_slots: StartingShopSlots
+    shop_lock_buttons_mode: StartingShopLockButtonsMode
+    num_starting_lock_buttons: NumberStartingShopLockButtons
