@@ -1,7 +1,7 @@
 from typing import Tuple, Union
 
 from ..constants import (
-    CHARACTERS,
+    BASE_GAME_CHARACTERS,
     CRATE_DROP_GROUP_REGION_TEMPLATE,
     CRATE_DROP_LOCATION_TEMPLATE,
     LEGENDARY_CRATE_DROP_GROUP_REGION_TEMPLATE,
@@ -132,11 +132,14 @@ class TestBrotatoRegions(BrotatoTestBase):
                     ),
                 )
 
-                next_character_won = CHARACTERS[character_index]
+                next_character_won = BASE_GAME_CHARACTERS.characters[character_index]
                 character_index += 1
-                next_win_location = self.world.get_location(
-                    RUN_COMPLETE_LOCATION_TEMPLATE.format(char=next_character_won)
-                )
+                try:
+                    next_win_location = self.world.get_location(
+                        RUN_COMPLETE_LOCATION_TEMPLATE.format(char=next_character_won)
+                    )
+                except KeyError:
+                    self.fail(f"Character {next_character_won} does not have a Run Won location.")
                 old_num_wins = self.multiworld.state.count(run_won_item_name, self.player)
                 # Set event=True so the state doesn't try to collect more wins and throw off our tests
                 self.multiworld.state.collect(run_won_item, prevent_sweep=True, location=next_win_location)

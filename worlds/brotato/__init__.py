@@ -4,9 +4,10 @@ from dataclasses import asdict
 from typing import Any, ClassVar, Dict, List, Literal, Set, Tuple, Union
 
 from BaseClasses import Item, LocationProgressType, MultiWorld, Region, Tutorial
-from Options import OptionError
+from Options import OptionError, OptionGroup
 from worlds.AutoWorld import WebWorld, World
 
+from . import options  # So we don't need to import every option class when defining option groups
 from ._loot_crate_groups import BrotatoLootCrateGroup, build_loot_crate_groups
 from .constants import (
     ABYSSAL_TERRORS_CHARACTERS,
@@ -55,6 +56,48 @@ class BrotatoWeb(WebWorld):
     theme = "dirt"
     rich_text_options_doc = True
 
+    option_groups = [
+        OptionGroup(
+            "Loot Crates",
+            [
+                options.SpawnNormalLootCrates,
+                options.NumberCommonCrateDropLocations,
+                options.NumberCommonCrateDropsPerCheck,
+                options.NumberCommonCrateDropGroups,
+                options.NumberLegendaryCrateDropLocations,
+                options.NumberLegendaryCrateDropsPerCheck,
+                options.NumberLegendaryCrateDropGroups,
+            ],
+        ),
+        OptionGroup(
+            "Item Rewards",
+            [
+                options.ItemWeights,
+                options.CommonItemWeight,
+                options.UncommonItemWeight,
+                options.RareItemWeight,
+                options.LegendaryItemWeight,
+            ],
+        ),
+        OptionGroup(
+            "Upgrades",
+            [
+                options.NumberCommonUpgrades,
+                options.NumberUncommonUpgrades,
+                options.NumberRareUpgrades,
+                options.NumberLegendaryUpgrades,
+            ],
+        ),
+        OptionGroup(
+            "Shop Slots",
+            [options.StartingShopSlots, options.StartingShopLockButtonsMode, options.NumberStartingShopLockButtons],
+        ),
+        OptionGroup(
+            "Abyssal Terrors DLC",
+            [options.EnableAbyssalTerrorsDLC, options.IncludeAbyssalTerrorsCharacters],
+        ),
+    ]
+
 
 class BrotatoWorld(World):
     """
@@ -75,7 +118,7 @@ class BrotatoWorld(World):
 
     _filler_items: List[str] = filler_items
     _starting_characters: List[str]
-    _include_characters: Set[str]
+    _include_characters: List[str]
     """The characters whose locations (wave/run complete) may have progression and useful items.
 
     This is derived from options.include_characters.
@@ -131,7 +174,7 @@ class BrotatoWorld(World):
     """
 
     _num_filler_items: int
-    """The number of filler itmes to create. Calculated in generate_early()."""
+    """The number of filler items to create. Calculated in generate_early()."""
 
     def __init__(self, world: MultiWorld, player: int) -> None:
         super().__init__(world, player)
@@ -167,11 +210,11 @@ class BrotatoWorld(World):
         }
 
         # Keep include characters in the defined order to make reading/debugging easier. Entries should all be valid.
-        self._include_characters = set()
+        self._include_characters = []
         for pack_enabled, include_characters_from_pack, pack_characters in game_packs.values():
             if pack_enabled:
-                characters_from_pack = set(c for c in pack_characters.characters if c in include_characters_from_pack)
-                self._include_characters |= characters_from_pack
+                characters_from_pack = [c for c in pack_characters.characters if c in include_characters_from_pack]
+                self._include_characters += characters_from_pack
 
         starting_character_option = self.options.starting_characters.value
         if starting_character_option == StartingCharacters.option_default_all:  # Defaults from all game packs
@@ -192,6 +235,13 @@ class BrotatoWorld(World):
             if not game_packs[ABYSSAL_TERRORS_CHARACTERS.name][0]:
                 raise OptionError("Abyssal Terrors DLC is not enabled in options.")
             self._starting_characters = self._get_valid_random_characters([ABYSSAL_TERRORS_CHARACTERS])
+        else:
+            raise RuntimeError("Unsupported option!")
+
+        # Clamp the number of wins needed to goal to the number of included characters, so the game isn't unwinnable.
+        # Note that we need to actually change the option value, not just clamp it, otherwise other parts of the world
+        # will miss it. This has caused bugs in the past.
+        self.options.num_victories.value = min(self.options.num_victories.value, len(self._include_characters))
 
         # Initialize the number of upgrades and items to include, then adjust as necessary below.
         self._upgrade_and_item_counts = {
@@ -248,10 +298,8 @@ class BrotatoWorld(World):
         self._num_filler_items = max(num_unclaimed_locations, 0) + self.options.num_legendary_crate_drops.value
 
     def set_rules(self) -> None:
-        # Don't require more victories than included characters
-        num_required_victories = min(self.options.num_victories.value, len(self._include_characters))
         self.multiworld.completion_condition[self.player] = create_has_run_wins_rule(
-            self.player, num_required_victories
+            self.player, self.options.num_victories.value
         )
 
     def create_regions(self) -> None:
@@ -304,11 +352,19 @@ class BrotatoWorld(World):
         return self.random.choice(self._filler_items)
 
     def fill_slot_data(self) -> Dict[str, Any]:
+        # Define outside dict for readability
+        spawn_normal_loot_crates = (
+            self.options.spawn_normal_loot_crates.value == self.options.spawn_normal_loot_crates.option_true
+        )
         return {
             "waves_with_checks": self.waves_with_checks,
             "num_wins_needed": self.options.num_victories.value,
+            "gold_reward_mode": self.options.gold_reward_mode.value,
+            "xp_reward_mode": self.options.xp_reward_mode.value,
+            "enable_enemy_xp": self.options.enable_enemy_xp.value == self.options.enable_enemy_xp.option_true,
             "num_starting_shop_slots": self.options.num_starting_shop_slots.value,
             "num_starting_shop_lock_buttons": (MAX_SHOP_SLOTS - self.num_shop_lock_button_items),
+            "spawn_normal_loot_crates": spawn_normal_loot_crates,
             "num_common_crate_locations": self.options.num_common_crate_drops.value,
             "num_common_crate_drops_per_check": self.options.num_common_crate_drops_per_check.value,
             "common_crate_drop_groups": [asdict(g) for g in self.common_loot_crate_groups],
@@ -384,7 +440,7 @@ class BrotatoWorld(World):
         This is intended ot be called by `create_items`, but it's split out because of its side effect (see below), and
         it's sort of involved.
 
-        Creates a Brotato Common/Uncommon/Rare/Legendary item for each loot crate location, usign the weights defined
+        Creates a Brotato Common/Uncommon/Rare/Legendary item for each loot crate location, using the weights defined
         in the use options to randomly determine how many of each tier to create.
 
         This also has a side effect: it instantiates the `wave_per_game_item` field which is used to populate a slot
