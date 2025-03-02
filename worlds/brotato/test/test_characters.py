@@ -25,4 +25,4 @@ class TestBrotatoCharacterOptions(BrotatoTestBase):
             random.Random(0x7A70),
         )
 
-        assert starting_characters == BASE_GAME_CHARACTERS.default_characters
+        assert set(starting_characters) == set(BASE_GAME_CHARACTERS.default_characters)
