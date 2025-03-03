@@ -35,7 +35,10 @@ class NumberRequiredWins(Range):
 class NumberAvailableCharacters(Range):
     """The number of characters to include in the pool.
 
-    The actual characters included will be randomly selected from the "Include Characters" options."""
+    The actual characters included will be randomly selected from the "Include Characters" options.
+
+    The actual number of characters may be less ff there are not enough included characters in the options.
+    """
 
     range_start = 1
     range_end = TOTAL_NUM_CHARACTERS
