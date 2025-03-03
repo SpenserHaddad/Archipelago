@@ -80,7 +80,8 @@ def get_available_and_starting_characters(
     num_characters_to_add = num_available_characters - len(available_characters)
     if num_characters_to_add > 0:
         valid_characters_to_add = sorted(valid_characters - set(starting_characters))
-        available_characters += random.sample(valid_characters_to_add, num_characters_to_add)
+        num_characters_to_sample = min(num_characters_to_add, len(valid_characters_to_add))
+        available_characters += random.sample(valid_characters_to_add, num_characters_to_sample)
     return CharacterInfoOutput(available_characters=available_characters, starting_characters=starting_characters)
 
 
