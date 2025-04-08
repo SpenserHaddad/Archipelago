@@ -31,7 +31,7 @@ def get_available_and_starting_characters(
     include_abyssal_terrors_characters: set[str],
     starting_character_mode: StartingCharacters,
     num_starting_characters: int,
-    num_available_characters: int,
+    num_characters: int,
     random: random.Random,
 ) -> CharacterInfoOutput:
     character_pack_info: dict[str, CharacterGroupInfo] = {
@@ -67,22 +67,22 @@ def get_available_and_starting_characters(
                 f"{num_starting_characters=}",
                 f"{include_base_game_characters=}",
                 # Put these two last because they can generate very long entries
-                f"{num_available_characters=}",
+                f"{num_characters=}",
                 f"{include_abyssal_terrors_characters=}",
             ]
         )
         raise OptionError(f"No valid starting characters for given options: {options_str}")
 
-    num_starting_characters_to_select = min(num_starting_characters, len(valid_starting_characters))
+    num_starting_characters_to_select = min(num_starting_characters, len(valid_starting_characters), num_characters)
     starting_characters: list[str] = random.sample(valid_starting_characters, num_starting_characters_to_select)
 
-    available_characters: list[str] = starting_characters.copy()
-    num_characters_to_add = num_available_characters - len(available_characters)
+    included_characters: list[str] = starting_characters.copy()
+    num_characters_to_add = num_characters - len(included_characters)
     if num_characters_to_add > 0:
         valid_characters_to_add = sorted(valid_characters - set(starting_characters))
         num_characters_to_sample = min(num_characters_to_add, len(valid_characters_to_add))
-        available_characters += random.sample(valid_characters_to_add, num_characters_to_sample)
-    return CharacterInfoOutput(available_characters=available_characters, starting_characters=starting_characters)
+        included_characters += random.sample(valid_characters_to_add, num_characters_to_sample)
+    return CharacterInfoOutput(available_characters=included_characters, starting_characters=starting_characters)
 
 
 def get_starting_characters_for_option(

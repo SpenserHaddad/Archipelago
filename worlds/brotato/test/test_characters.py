@@ -1,14 +1,18 @@
 import random
 from contextlib import AbstractContextManager, nullcontext
 
-import pytest
+from test.bases import TestBase
 
 from ..characters import get_available_and_starting_characters
-from . import BrotatoTestBase
-from .data_sets.characters import CHARACTER_TEST_DATA_SETS
+from ..constants import BASE_GAME_CHARACTERS
+from ..options import StartingCharacters
+from .data_sets.characters import (
+    CHARACTER_TEST_DATA_SETS,
+    NON_ERROR_CHARACTER_TEST_DATA_SETS,
+)
 
 
-class TestBrotatoCharacterOptions(BrotatoTestBase):
+class TestBrotatoCharacterOptions(TestBase):
     """Tests to ensure that we correctly determine the included and starting characters from options.
 
     This differs from `test_include_characters` and `test_starting_characters` in that it focuses on checking that the
@@ -18,10 +22,10 @@ class TestBrotatoCharacterOptions(BrotatoTestBase):
 
     def test_get_available_and_starting_characters_data_sets_correct_results(self):
         for data_set in CHARACTER_TEST_DATA_SETS:
-            with self.subTest(msg=data_set.description):
+            with self.subTest(data_set=data_set):
                 error_checker: AbstractContextManager
                 if data_set.expected_exception is not None:
-                    error_checker = pytest.raises(data_set.expected_exception)
+                    error_checker = self.assertRaises(data_set.expected_exception)
                 else:
                     error_checker = nullcontext()
 
@@ -38,15 +42,29 @@ class TestBrotatoCharacterOptions(BrotatoTestBase):
 
                     # We don't know for certain which characters were selected, so we settle for checking that they're
                     # a subset of the expected collection
-                    assert set(starting_characters) <= data_set.valid_starting_characters
-                    assert set(available_characters) <= data_set.valid_available_characters
+                    self.assertTrue(set(starting_characters) <= data_set.valid_starting_characters)
+                    self.assertTrue(set(available_characters) <= data_set.valid_available_characters)
+                    self.assertTrue(set(starting_characters) <= set(available_characters))
+
+    def test_starting_characters_greater_than_num_characters_is_clamped(self):
+        num_characters = 15
+        num_starting_characters = 20
+        available_characters, starting_characters = get_available_and_starting_characters(
+            set(BASE_GAME_CHARACTERS.characters),
+            False,
+            set(),
+            StartingCharacters(StartingCharacters.option_random_all),
+            num_starting_characters,
+            num_characters,
+            random.Random(0x4444),
+        )
+        # The number of starting characters shouldn't be higher than the total number of characters
+        self.assertEqual(len(available_characters), num_characters)
+        self.assertEqual(len(starting_characters), num_characters)
 
     def test_get_available_and_starting_characters_data_sets_reproducible_results(self):
-        for data_set in CHARACTER_TEST_DATA_SETS:
-            if data_set.expected_exception is not None:
-                # Don't bother testing error cases for this, they shouldn't rely on random results.
-                continue
-            with self.subTest(msg=data_set.description):
+        for data_set in NON_ERROR_CHARACTER_TEST_DATA_SETS:
+            with self.subTest(data_set=data_set):
                 available_characters, starting_characters = get_available_and_starting_characters(
                     data_set.include_base_game_characters,
                     data_set.enable_abyssal_terrors_dlc,
